@@ -12,7 +12,7 @@ RESET="\e[0m"
 
 # Inform the user that the script is running:
 echo
-echo -e "╰┈➤   ${YELLOW}Loading Information. Please wait... 🔧${RESET}"
+echo -e "╰┈➤   ${YELLOW}Loading Information. Please wait... 🔧${RESET} - [${YELLOW}$(date '+%Y-%m-%d %H:%M:%S')${RESET}]"
 echo
 
 # Test connectivity to a specific host (Google's DNS: 8.8.8.8)
@@ -26,7 +26,7 @@ FIREWALL_STATUS=$?
 
 # Display summary of network status
 echo "==================================================="
-echo -e "System Network Status: [${LBLUE}$(date '+%Y-%m-%d %H:%M:%S')${RESET}]"
+echo "System Network Status:"
 echo
 echo -e "- Connectivity: $(if [[ $CONNECTION_STATUS -eq 0 ]]; then echo "${GREEN}Successful${RESET}"; else echo "${RED}Failed${RESET}"; fi)"
 echo "- Interfaces: $(ip link | grep UP | awk '{print $2}' | paste -sd ' , ' -)"
@@ -47,7 +47,7 @@ echo -e "- Heartbleed vulnerability (OpenSSL): $(openssl version -a | grep -q 'O
 echo -e "- Shellshock vulnerability (Bash): $(env 'VAR=() { :;}; echo vulnerable' 'FUNCTION()=() { :;}; echo Vulnerable' bash -c 'echo Not Vulnerable')"
 echo
 echo "==================================================="
-echo "Listening Services:"
+echo -e "Listening Services: State [${LBLUE}LISTENING${RESET}]"
 echo
 echo -e "- Service Ports in Use: $(ss -tunlp | awk '/LISTEN/ && $5 ~ /:/ {split($5, a, ":"); print a[2]}' | sort -n | uniq | awk 'NF {printf "[%s] ", $0}')"
 echo  
@@ -58,17 +58,26 @@ echo -e "$(ss -tunlp | awk '/LISTEN/ {
     cmd = "ps -o user= -p " pid;
     cmd | getline user;
     close(cmd);
-    print "  Service:", $7, "|| Port:", $5, "|| Protocol:", $1, "|| User:", user }' | column -t)"
+    print "  Service:", $7, "|| Port:", substr($5, match($5, /[^:]*$/)), "|| Protocol:", $1, "|| User:", user }' | column -t)"
     
 echo 
+echo "==================================================="
+echo -e "Active Connections: State [${LBLUE}ESTABLISHED${RESET}]"
 echo
- 
+echo -e "$(ss -tunlpa | awk '/ESTAB / { 
+    split($7, service_info, "=");
+    pid = service_info[2];
+    sub(/[),].*/, "", pid);
+    cmd = "ps -o user= -p " pid;
+    cmd | getline user;
+    close(cmd);
+    print "  Service:", $7, "|| Port:", substr($5, match($5, /[^:]*$/)), "|| Protocol:", $1, "|| User:", user }' | column -t)"
 
-#echo "$(ss -tunlp | awk '/LISTEN/ {print "${LGREEN}Service:${RESET}", $7, "|| ${LBLUE}Protocol:${RESET}", $1, "|| ${YELLOW}User:${RESET}", $NF}' | column -t)"
+echo
+echo
+
+
 # Display ARP Table: 
 # echo "- ARP Table :"
 # echo "$(ip neigh)"
-# echo
-# echo "- Active Connections:"
-# echo "$(ss -tunapl | grep ESTABLISHED)" 
-# echo -e "- Active Users: $(who)"
+
