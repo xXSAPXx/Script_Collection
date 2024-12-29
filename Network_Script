@@ -10,10 +10,12 @@ RED="\e[31m"
 YELLOW="\e[33m"
 RESET="\e[0m"
 
+
 # Inform the user that the script is running:
 echo
 echo -e "╰┈➤   ${YELLOW}Loading Information. Please wait... 🔧${RESET} - [${YELLOW}$(date '+%Y-%m-%d %H:%M:%S')${RESET}]"
 echo
+
 
 # Test connectivity to a specific host (Google's DNS: 8.8.8.8)
 ping -c 4 8.8.8.8 > /dev/null
@@ -23,8 +25,12 @@ CONNECTION_STATUS=$?
 command -v systemctl &>/dev/null && systemctl is-active firewalld > /dev/null
 FIREWALL_STATUS=$?
 
+# Test SELinux Status: 
+SELINUX_STATUS=$(getenforce)
 
-# Display summary of network status
+
+
+# Display summary of network status:
 echo "==================================================="
 echo "System Network Status:"
 echo
@@ -36,16 +42,17 @@ echo "- Default Gateway:     $(ip route | awk '/default/ {print $3}')"
 echo "- Public DNS Servers:  $(nslookup -type=NS google.com | awk '/Server:/ {print $2}')"
 echo
 
-# Display Network and Security Information
+# Display Network and Security Information:
 echo "==================================================="
 echo "Network and Security Information:"
 echo
+echo -e "- SELinux Status: $(if [[ $SELINUX_STATUS == "Enforcing" ]]; then echo "${GREEN}Enforcing${RESET}"; elif [[ $SELINUX_STATUS == "Permissive" ]]; then echo "${YELLOW}Permissive${RESET}"; else echo "${RED}Disabled${RESET}"; fi)"
 echo -e "- Firewall Status (firewalld): $(if [[ $FIREWALL_STATUS -eq 0 ]]; then echo "${GREEN}Active${RESET}"; else echo "${RED}Inactive${RESET} --- ${YELLOW}(Security Groups Likely Used)${RESET}"; fi)"
 echo -e "- Open Ports: $(if [[ $FIREWALL_STATUS -eq 0 ]]; then echo -e $(firewall-cmd --list-ports | tr ' ' '\n' | awk '{printf "[%s]  ", $1}'); else echo -e "${RED}N/A${RESET}"; fi)"
 echo -e "- OpenSSH Version: $(ssh -V 2>&1 | cut -d' ' -f1-2)"
-echo -e "- Heartbleed vulnerability (OpenSSL): $(openssl version -a | grep -q 'OpenSSL 1.0.1[0-9a-f]*' && echo "Vulnerable, Update OpenSSL!" || echo "Not Vulnerable")"
-echo -e "- Shellshock vulnerability (Bash): $(env 'VAR=() { :;}; echo vulnerable' 'FUNCTION()=() { :;}; echo Vulnerable' bash -c 'echo Not Vulnerable')"
 echo
+
+# Display Listening Services and Ports: 
 echo "==================================================="
 echo -e "Listening Services: State [${LBLUE}LISTENING${RESET}]"
 echo
@@ -61,6 +68,8 @@ echo -e "$(ss -tunlp | awk '/LISTEN/ {
     print "  Service:", $7, "|| Port:", substr($5, match($5, /[^:]*$/)), "|| Protocol:", $1, "|| User:", user }' | column -t)"
     
 echo 
+
+# Display Established Services and Ports: 
 echo "==================================================="
 echo -e "Active Connections: State [${LBLUE}ESTABLISHED${RESET}]"
 echo
