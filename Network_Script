@@ -29,7 +29,6 @@ FIREWALL_STATUS=$?
 SELINUX_STATUS=$(getenforce)
 
 
-
 # Display summary of network status:
 echo "==================================================="
 echo "System Network Status:"
@@ -47,9 +46,9 @@ echo "==================================================="
 echo "Network and Security Information:"
 echo
 echo -e "- SELinux Status: $(if [[ $SELINUX_STATUS == "Enforcing" ]]; then echo "${GREEN}Enforcing${RESET}"; elif [[ $SELINUX_STATUS == "Permissive" ]]; then echo "${YELLOW}Permissive${RESET}"; else echo "${RED}Disabled${RESET}"; fi)"
+echo -e "- Root SSH Access (Cloud_VM): $(grep -Eq '^#?PermitRootLogin (no|prohibit-password)' /etc/ssh/sshd_config && grep -q 'PasswordAuthentication no' /etc/ssh/sshd_config.d/50-cloud-init.conf && echo -e "${GREEN}Disabled${RESET}" || echo -e "${RED}Enabled - Security Risk!${RESET}")"
 echo -e "- Firewall Status (firewalld): $(if [[ $FIREWALL_STATUS -eq 0 ]]; then echo "${GREEN}Active${RESET}"; else echo "${RED}Inactive${RESET} --- ${YELLOW}(Security Groups Likely Used)${RESET}"; fi)"
 echo -e "- Open Ports: $(if [[ $FIREWALL_STATUS -eq 0 ]]; then echo -e $(firewall-cmd --list-ports | tr ' ' '\n' | awk '{printf "[%s]  ", $1}'); else echo -e "${RED}N/A${RESET}"; fi)"
-echo -e "- OpenSSH Version: $(ssh -V 2>&1 | cut -d' ' -f1-2)"
 echo
 
 # Display Listening Services and Ports: 
