@@ -15,8 +15,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("prompt_check" "bash_history_check" "time_format_check")
-func_list_sys_config=("prompt_config" "bash_history_config" "time_format_config")
+func_list_sys_checks=("prompt_check" "bash_history_check" "time_format_check" "swappiness_check")
+func_list_sys_config=("prompt_config" "bash_history_config" "time_format_config" "swappiness_config")
 
 
 
@@ -433,7 +433,7 @@ EOF
 
 
 
-
+# Function to check VM time format:
 time_format_check() {
 	
     CONFIG_FILE=/etc/locale.conf
@@ -449,6 +449,7 @@ time_format_check() {
 
 
 
+# Function to configure VM time format:
 time_format_config() {
 	
     CONFIG_FILE=/etc/locale.conf
@@ -465,6 +466,49 @@ time_format_config() {
 			
 	echo -e "╰┈➤   ✅  ${GREEN}Time Format set successfully!${RESET}"
     fi	
+}
+
+
+
+# Function to check VM swappiness:
+swappiness_check() {
+
+    SWAPPINESS_VALUE=$(cat /proc/sys/vm/swappiness)
+
+    if [[ "$SWAPPINESS_VALUE" -eq 1 ]]; then
+        echo
+        echo -e "✅  ${GREEN}Swappiness is set to 1.${RESET}"
+    else
+        echo
+        echo -e "❌  ${YELLOW}Swappiness is set to $SWAPPINESS_VALUE.${RESET}"
+    fi
+}
+
+
+
+# Function to configure VM swappiness:
+swappiness_config() {
+
+    touch /etc/sysctl.d/99-swappiness.conf &>/dev/null
+    CONF_FILE="/etc/sysctl.d/99-swappiness.conf"
+    SWAPPINESS_VALUE=$(cat /proc/sys/vm/swappiness)
+
+    if [[ "$SWAPPINESS_VALUE" -eq 1 ]]; then
+        echo
+        echo -e "✅  ${GREEN}Swappiness is already configured to 1.${RESET}"
+    else 
+        echo
+        echo -e "${YELLOW}VM Swappiness is not configured. Setting it now...${RESET}"
+
+        # Set swappiness for the current session / Sysctl conf_file to persist on reboot
+        echo 1 | sudo tee /proc/sys/vm/swappiness > /dev/null
+        echo "vm.swappiness=1" | sudo tee "$CONF_FILE" > /dev/null
+        
+        # Apply the conf_file
+        sysctl -p /etc/sysctl.d/99-swappiness.conf > /dev/null
+        
+        echo -e "╰┈➤   ✅  ${GREEN}Swappiness has been configured to 1.${RESET}"
+    fi    
 }
 
 
