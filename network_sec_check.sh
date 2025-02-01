@@ -84,8 +84,18 @@ echo -e "$(ss -tunlpa | awk '/ESTAB / {
 echo
 echo
 
+# Display Kernel Network Parameters: 
+echo "==================================================="
+echo "Kernel Network Parameters:"
+echo
+echo -e "- TCP Congestion Control Algorithm:              $(sysctl -n net.ipv4.tcp_congestion_control)"
+echo -e "- Network Packet Scheduler (Queue Discipline):   $(sysctl -n net.core.default_qdisc)"
+echo -e "- TCP Socket Receive/Send Buffers MAX Size:      $(sysctl -n net.core.rmem_max) || $(sysctl -n net.core.wmem_max)"
+echo -e "- TCP Socket Receive/Send Buffers Tuning Limit:  $(sysctl -n net.ipv4.tcp_rmem) || $(sysctl -n net.ipv4.tcp_wmem)"
+
+echo
+echo
 
 # Display ARP Table: 
 # echo "- ARP Table :"
 # echo "$(ip neigh)"
-
