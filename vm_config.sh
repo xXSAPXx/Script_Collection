@@ -12,7 +12,7 @@ YELLOW="\e[33m"
 RESET="\e[0m"
 
 # List of DNF Packages to check for and then install:
-package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
+package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
 func_list_sys_checks=("prompt_check" "bash_history_check" "time_format_check" "swappiness_check")
