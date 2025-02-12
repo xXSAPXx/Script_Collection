@@ -521,10 +521,8 @@ swappiness_config() {
 # Main script logic
 if [ "$#" -ne 1 ]; then
    echo
-   echo -e "${RED}Error: Exactly one argument is required.${RESET}"
-   echo
-   echo -e "${YELLOW}Please use one of the following valid arguments: --fix, --report, --update, --sysconf or --help.${RESET}"
-   echo
+   echo -e "╰┈➤   ${RED}Error: Exactly one argument is required.${RESET}"
+   show_help
    exit 1
 fi
 
@@ -555,12 +553,9 @@ case "$1" in
         show_help
         ;;
     *)
-        echo -e "\n"
-        echo -e "${RED}Error: Invalid argument '$1'.${RESET}"
-        echo -e "${RED}Please use one of the following valid arguments: --fix, --report, --update, --sys_report, --sys_conf or --help.${RESET}"
-        echo
-        echo -e "╰┈➤   ${YELLOW}Use '--help' for more information.${RESET}"
-        echo -e "\n"
+        echo 
+        echo -e "╰┈➤   ${RED}Error: Invalid argument '$1'.${RESET}"
+        show_help
         exit 1
         ;;
 esac
