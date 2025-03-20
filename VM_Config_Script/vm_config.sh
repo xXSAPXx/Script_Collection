@@ -21,7 +21,7 @@ func_list_sys_config=("prompt_config" "bash_history_config" "time_format_config"
 
 
 
-# Function to display help
+# Function to display help:
 show_help() {
     echo "===================================================================================================================="
     echo
