@@ -6,6 +6,7 @@ set -uo pipefail
 GREEN="\e[32m"
 LGREEN="\e[92m"
 BLUE="\e[34m"
+CYAN="\e[36m"
 LBLUE="\e[94m"
 RED="\e[31m"
 YELLOW="\e[33m"
@@ -22,23 +23,18 @@ func_list_sys_config=("prompt_config" "bash_history_config" "time_format_config"
 
 # Function to display help
 show_help() {
-    echo -e "____________________________________________________________________________________________________________________"
+    echo "===================================================================================================================="
     echo
-    echo "Possible Options For Execution: 🔧"
+    echo -e "${GREEN}Possible Options For Execution:${RESET} 🔧"
     echo
-    echo "  --report         Show VM details / Check installed packages / Check for OS Updates."
+    echo -e "  ${CYAN}--report${RESET}         | Show VM details / Check installed packages / Check for OS Updates."
+    echo -e "  ${CYAN}--fix${RESET}            | Check if required packages and repositories are installed - if not, install them."
+    echo -e "  ${CYAN}--sys_report${RESET}     | Show VM System Configuration -- Prompt / History / Time / etc..."
+    echo -e "  ${CYAN}--sys_conf${RESET}       | Configure Prompt / History / Time / etc..."
+    echo -e "  ${CYAN}--update${RESET}         | Check If System Packages are updated - if not, update the system."
+    echo -e "  ${CYAN}--help${RESET}           | Display this help message."
     echo
-    echo "  --fix            Check if required packages and repositories are installed - if not, install them."
-    echo
-    echo "  --sys_report     Show VM System Configuration -- Prompt / History / Time / etc..."
-    echo
-    echo "  --sys_conf       Configure Prompt / History / Time / etc..."
-    echo
-    echo "  --update         Check If System Packages are updated - if not, update the system."
-    echo
-    echo "  --help           Display this help message."
-    echo
-    echo -e "____________________________________________________________________________________________________________________"
+    echo "===================================================================================================================="
 
 }
 
