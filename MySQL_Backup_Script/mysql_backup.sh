@@ -102,7 +102,8 @@ EOF
 
         # Calculate backup duration: 
 		DURATION_BACKUP="$(( ($END_BACKUP - $START_BACKUP) + 2 ))"
-		echo "Duration in Seconds: $(($END_BACKUP - $START_BACKUP))"
+        echo 
+		echo -e "${YELLOW}Duration in Seconds:${RESET} $(($END_BACKUP - $START_BACKUP))"
         return 0  # Success
 		
     else
@@ -123,7 +124,7 @@ xtrabackup_backup() {
         START_BACKUP="$(date +%s)"
 
         # Go to BACKUP_DIR: 
-        cd ${BACKUP_DIR}
+        cd ${BACKUP_DIR} || { echo -e "${RED}Error: Failed to change directory to ${BACKUP_DIR} ${RESET}"; return 1; }
 
         # Run Xtrabackup and check for failure
         xtrabackup --backup --datadir="${DATA_DIR}" --stream=xbstream --throttle=60 --parallel=8 --compress \
@@ -142,7 +143,8 @@ xtrabackup_backup() {
 
         # Calculate backup duration:
         DURATION_BACKUP="$(( ($END_BACKUP - $START_BACKUP) + 2 ))"
-        echo "Duration in Seconds: $(($END_BACKUP - $START_BACKUP))"
+        echo
+        echo -e "${YELLOW}Duration in Seconds:${RESET} $(($END_BACKUP - $START_BACKUP))"
         return 0
 
     else
