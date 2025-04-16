@@ -25,7 +25,7 @@ BACKUP_DIR_SHELL="${BACKUP_DIR}/full-instance-backup-${CURRENT_TIME}-mysql-shell
 GCP_BINARY_PATH=$(which gcloud) || { echo -e "${RED}Error: gcloud CLI is not installed or not in PATH. Please install Google Cloud SDK.${RESET}"; }
 GCP_BUCKET="gs://db-dela-gamification-dev-src-backup"
 TEXTFILE_COLLECTOR_DIR="/var/lib/node_exporter/textfile_collector/"
-
+BACKUP_TIMESTAMP=$(($(date +%s) * 1000))
 
 
 # Function Help: 
@@ -260,11 +260,12 @@ save_backup_metrics_failure() {
 }
 
 
-# Function to save TRANSFER monitoring metrics in case of SUCCESS:
+# Function to save TRANSFER monitoring metrics in case of SUCCESS: / Update Backup Age Timestamp(ms) in a separate prom. file
 save_transfer_metrics_success() {
     # Add Success Transfer Stats to Node_Exporter file: 
     printf "node_mysql_backup_transfer_status{instance=\"$SERVER_NAME\"} 0\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_backup_status.prom"
     printf "node_mysql_backup_transfer_duration_seconds{instance=\"$SERVER_NAME\"} $DURATION_TRANS\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_backup_status.prom"
+    printf "node_mysql_last_successful_backup_date{instance=\"$SERVER_NAME\"} $BACKUP_TIMESTAMP\n" > "$TEXTFILE_COLLECTOR_DIR/mysql_backup_age.prom"
 }
 
 
