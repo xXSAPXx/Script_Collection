@@ -3,10 +3,10 @@
 
 # Requirements:
 # -------------------
-#- $ python3 --version                                       /// Check Python Version 
-#- $ pip install myloginpath                                 /// myloginpath (for reading MySQL login-path credentials)
-#- $ dnf install python3-devel mariadb-connector-c-devel gcc /// mysqlclient (MySQLdb) library and 'C' compiler    
-#- $ pip3 install mysqlclient                                /// mysqlclient (MySQLdb)                                       
+#- $ python3 --version                                        /// Check Python Version 
+#- $ pip3 install myloginpath                                 /// myloginpath (for reading MySQL login-path credentials)
+#- $ dnf install python3-devel mariadb-connector-c-devel gcc  /// mysqlclient (MySQLdb) library and 'C' compiler    
+#- $ pip3 install mysqlclient                                 /// mysqlclient (MySQLdb)                                       
 
 
 # Description:
@@ -25,6 +25,7 @@ import threading
 
 
 # Configurable Variables: 
+LOGIN_PATH='local'
 DATABASE_TO_CHECK='sportsbook_updated'      # Set database to check
 TABLE_TO_CHECK = ''                         # Set optional table for check (leave empty '' if checking whole DB)
 WARNING_THRESHOLD = 70.0                    # Warn if column is more than 70% full
@@ -42,7 +43,7 @@ def connect_and_fetch_columns():
 
     # Parse the MySQL mysql_config_editor --login-path
     try:
-        conf = myloginpath.parse('local')   # Login-path=local
+        conf = myloginpath.parse((LOGIN_PATH))   # Login-path=local
 
     except Exception as e:
         print(f"Error reading login path: {e}")
