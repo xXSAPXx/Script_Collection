@@ -27,15 +27,15 @@ import threading
 # Configurable Variables: 
 LOGIN_PATH='local'
 DATABASE_TO_CHECK='sportsbook_updated'      # Set database to check
-TABLE_TO_CHECK = ''                         # Set optional table for check (leave empty '' if checking whole DB)
-WARNING_THRESHOLD = 70.0                    # Warn if column is more than 70% full
+TABLE_TO_CHECK=''                           # Set optional table for check (leave empty '' if checking whole DB)
+WARNING_THRESHOLD=70.0                      # Warn if column is more than 70% full
 NUMBER_OF_THREADS=5                         # Set number of threads for column checking (Number of MySQL connections)
 
 
 # Hardcoded Variables: 
 start_time_final = time.time()              # Start time of the Script
 lock = threading.Lock()                     # Lock Multithreading 
-COLUMNS_CHECKED = 0
+COLUMNS_CHECKED=0
 
 
 # ===== Function to connect to DB and extract all columns =====
