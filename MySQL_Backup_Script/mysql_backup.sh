@@ -2,7 +2,7 @@
 
 set -uo pipefail
  
-# Main script for exporting LOGICAL and PHYSICAL production DB backups. #(Version 2)
+# Main script for exporting LOGICAL and PHYSICAL production DB backups. (Version 2)
 # 1) Uses Percona (MySQL Shell) or Percona (Xtrabackup) to make a full instance backup.
 # 2) Transfers the backup to specific GCP Bucket.
 # 3) Updates node_exporter text collector files for Grafana backup monitoring in case of SUCCESS or FAILURE.
