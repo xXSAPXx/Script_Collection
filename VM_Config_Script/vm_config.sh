@@ -621,10 +621,10 @@ EOF
 # Main Script Logic Function:
 function main() {
     if [ "$#" -ne 1 ]; then
-    echo
-    echo -e "╰┈➤   ${RED}Error: Exactly one argument is required.${RESET}"
-    show_help
-    exit 1
+        echo
+        echo -e "╰┈➤   ${RED}Error: Exactly one argument is required.${RESET}"
+        show_help
+        exit 1
     fi
 
 
@@ -663,7 +663,8 @@ function main() {
 }
 
 # Call the main function with the provided arguments:
-main "${1:-}"
+main "$1"
+
 
 
 
