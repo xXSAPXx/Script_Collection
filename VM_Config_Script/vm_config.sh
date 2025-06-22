@@ -16,8 +16,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("prompt_check" "bash_history_check" "time_format_check" "swappiness_check")
-func_list_sys_config=("prompt_config" "bash_history_config" "time_format_config" "swappiness_config")
+func_list_sys_checks=("prompt_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check")
+func_list_sys_config=("prompt_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config")
 
 
 
