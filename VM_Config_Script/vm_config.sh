@@ -627,7 +627,6 @@ function main() {
         exit 1
     fi
 
-
 # Main Script Logic Based on the Argument Provided:
     case "$1" in
         --report)
@@ -640,7 +639,7 @@ function main() {
             install_epel_repo
             install_missing_packages
             check_system_updates
-        ;;
+            ;;
         --sys_report)
             check_system_config
             ;;
