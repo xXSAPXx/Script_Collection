@@ -1,0 +1,3 @@
+# Force all scripts to use LF (/n) line endings for Linux compatibility.
+# And to ensure consistent behavior across different environments.
+*.sh text eol=lf
