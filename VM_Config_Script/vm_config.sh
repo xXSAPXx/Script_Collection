@@ -371,7 +371,7 @@ bash_history_check() {
     BASH_HISTORY_SH=/etc/profile.d/bash_history.sh
 	
     if [[ -f "$BASH_HISTORY_SH" ]]; then 
-	if grep -qE '^\s*HISTSIZE=|^\s*HISTFILESIZE=|^\s*HISTIGNORE=|^\s*HISTCONTROL=|^\s*PROMPT_COMMAND=|^\s*HISTTIMEFORMAT=' "$BASH_HISTORY_SH"; then
+	if grep -qE '^\s*# ROOT User Bash History Configuration:' "$BASH_HISTORY_SH"; then
 		echo
 		echo -e "✅  ${GREEN}Bash history is already configured.${RESET}"
 	else
@@ -392,7 +392,7 @@ bash_history_config() {
     touch /etc/profile.d/bash_history.sh &>/dev/null
     BASH_HISTORY_SH=/etc/profile.d/bash_history.sh
 
-    if grep -qE '^\s*HISTSIZE=|^\s*HISTFILESIZE=|^\s*HISTIGNORE=|^\s*HISTCONTROL=|^\s*PROMPT_COMMAND=|^\s*HISTTIMEFORMAT=' "$BASH_HISTORY_SH"; then
+    if grep -qE '^\s*# ROOT User Bash History Configuration:' "$BASH_HISTORY_SH"; then
         echo
         echo -e "✅  ${GREEN}Bash history is already configured.${RESET}"
     else
@@ -506,6 +506,115 @@ swappiness_config() {
         echo -e "╰┈➤   ✅  ${GREEN}Swappiness has been configured to 1.${RESET}"
     fi    
 }
+
+
+
+# Function to check DNF settings:
+dnf_check() {
+
+    DNF_CONF_FILE="/etc/dnf/dnf.conf"
+
+    if [[ -f "$DNF_CONF_FILE" ]]; then
+        if grep -qE '^\s*# DNF Custom Configuration Settings:' "$DNF_CONF_FILE"; then
+            echo
+            echo -e "✅  ${GREEN}DNF settings are already configured. ${RESET}"
+        else
+            echo
+            echo -e "❌  ${RED}DNF settings are not configured.${RESET}"
+        fi
+    else
+        echo
+        echo -e "❌  ${RED}DNF configuration file not found.${RESET}"
+    fi
+}
+
+
+
+# Function to configure DNF settings:
+dnf_config() {
+
+    DNF_CONF_FILE="/etc/dnf/dnf.conf"
+
+    if [[ -f "$DNF_CONF_FILE" ]]; then
+        if grep -qE '^\s*# DNF Custom Configuration Settings:' "$DNF_CONF_FILE"; then
+            echo
+            echo -e "✅  ${GREEN}DNF settings are already configured.${RESET}"
+        else
+            echo
+            echo -e "${YELLOW}Configuring DNF settings...${RESET}"
+
+            # Append the configuration to the file:
+            cat <<'EOF' > "$DNF_CONF_FILE"
+# DNF Custom Configuration Settings:
+[main]
+
+################################# MAIN SETTINGS #################################
+
+# Log file location
+logfile=/var/log/dnf.log
+
+# Control whether to use gpgcheck (verify package signatures)
+gpgcheck=1
+
+# Enable fastestmirror plugin (helps speed up downloads)
+fastestmirror=True
+
+# Limits the number of versions kept for install-only packages
+installonly_limit=3
+
+# Best architecture match (useful for x86_64 installs)
+best=True
+
+# Skip broken packages instead of failing
+skip_if_unavailable=False
+
+# Automatically remove dependencies that are no longer used
+clean_requirements_on_remove=True
+
+# Set to True to automatically install weak dependencies
+install_weak_deps=True
+
+# Use delta RPMs to save bandwidth
+deltarpm=True
+
+# Allow downgrade of packages when needed
+allow_downgrade=True
+
+# Number of times to retry a failed download
+retries=5
+
+
+################################# CACHE / METADATA SETTINGS #################################
+
+# Number of packages to keep in cache
+keepcache=TRUE
+
+# Set metadata expiration period (default is 48h)
+metadata_expire=6h
+
+
+################################# PERFORMANCE SETTINGS #################################
+
+# Maximum parallel downloads
+max_parallel_downloads=4
+
+# Set the number of threads used by DNF (0 = automatic, can set to number of CPU cores)
+#thread_limit=0
+
+
+EOF
+
+            echo -e "╰┈➤   ✅  ${GREEN}DNF settings configured successfully!${RESET}"
+        fi
+    else
+        echo
+        echo -e "❌  ${RED}DNF configuration file not found.${RESET}"
+    fi
+}
+
+
+
+
 
 
 
