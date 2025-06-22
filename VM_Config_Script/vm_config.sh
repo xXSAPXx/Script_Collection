@@ -618,45 +618,52 @@ EOF
 #                     Main script logic                           Main script logic                               Main script logic                      #
 ##########################################################################################################################################################
 
+# Main Script Logic Function:
+function main() {
+    if [ "$#" -ne 1 ]; then
+    echo
+    echo -e "╰┈➤   ${RED}Error: Exactly one argument is required.${RESET}"
+    show_help
+    exit 1
+    fi
 
-# Main script logic
-if [ "$#" -ne 1 ]; then
-   echo
-   echo -e "╰┈➤   ${RED}Error: Exactly one argument is required.${RESET}"
-   show_help
-   exit 1
-fi
+
+# Main Script Logic Based on the Argument Provided:
+    case "$1" in
+        --report)
+            print_vm_details
+            check_epel_repo
+            check_installed_packages
+            check_system_updates
+            ;;
+        --fix)
+            install_epel_repo
+            install_missing_packages
+            check_system_updates
+        ;;
+        --sys_report)
+            check_system_config
+            ;;
+        --sys_conf)
+            fix_system_config
+            ;;
+        --update)
+            update_system
+            ;;
+        --help)
+            show_help
+            ;;
+        *)
+            echo 
+            echo -e "╰┈➤   ${RED}Error: Invalid argument '$1'.${RESET}"
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Call the main function with the provided arguments:
+main "${1:-}"
 
 
-# Main script logic
-case "$1" in
-    --report)
-        print_vm_details
-        check_epel_repo
-        check_installed_packages
-        check_system_updates
-        ;;
-    --fix)
-        install_epel_repo
-        install_missing_packages
-        check_system_updates
-        ;;
-    --sys_report)
-        check_system_config
-        ;;
-    --sys_conf)
-        fix_system_config
-        ;;
-    --update)
-        update_system
-        ;;
-    --help)
-        show_help
-        ;;
-    *)
-        echo 
-        echo -e "╰┈➤   ${RED}Error: Invalid argument '$1'.${RESET}"
-        show_help
-        exit 1
-        ;;
-esac
+
