@@ -662,7 +662,7 @@ function main() {
 }
 
 # Call the main function with the provided arguments:
-main "$1"
+main "${1:-}"
 
 
 
