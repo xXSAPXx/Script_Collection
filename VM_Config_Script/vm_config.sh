@@ -283,7 +283,7 @@ function check_system_config() {
 
             "$func"   # Call the function
 
-            else
+        else
             echo -e "${RED}Function $func NOT FOUND!${RESET}"
         fi
     done
@@ -346,50 +346,49 @@ function bash_profile_config() {
 
     # Check if the prompt is already configured:
     if grep -qE '^\s*# Custom Bash Profile Settings:' "$BASH_PROMPT_SH_FILE"; then
-	echo
-	echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
+	    echo
+	    echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
     else
-	echo -e "${YELLOW}Bash prompt is not configured. Setting it now...${RESET}"
+	    echo -e "${YELLOW}Bash prompt is not configured. Setting it now...${RESET}"
 
-	# Append the prompt configuration to file:
-	cat <<EOF > "$BASH_PROMPT_SH_FILE"
+	    # Append the prompt configuration to file:
+	    cat <<EOF > "$BASH_PROMPT_SH_FILE"
 # Custom Bash Profile Settings:
 
 # If user ID = 1(ROOT) then set red color for the prompt:
 if [ "$(id -u)" -eq 0 ]; then
 
-# Aliases: 
-command -v bat >/dev/null 2>&1 && { alias cat='bat -pp'; }
-command -v zoxide >/dev/null 2>&1 && { eval "\$(zoxide init --cmd cd bash)"; }
+    # Aliases: 
+    command -v bat >/dev/null 2>&1 && { alias cat='bat -pp'; }
+    command -v zoxide >/dev/null 2>&1 && { eval "\$(zoxide init --cmd cd bash)"; }
 
+    # Prompt based on hostname
+    ENV_TYPE=$(hostname -s | tr '[:upper:]' '[:lower:]')
 
-    PS1='[\[\e[1;31m\]\u\e[0m@\h \w ]# '
-
-ENV_TYPE=$(hostname -s | tr '[:upper:]' '[:lower:]')
-
-case "$ENV_TYPE" in
-  *prod*rpl*)
-    PS1="[\[\e[0;33m\][\[\e[0;31m\]\u\[\e[0;33m\]@\h:\[\e[0;39m\] \w\[\e[0;33m\]]#\[\e[0m\] "
-    ;;
-  *prod*)
-    PS1="\[\e[0;31m\][\[\e[1;31m\]\u\[\e[1;31m\]@\h:\[\e[0;39m\] \w\[\e[0;31m\]]#\[\e[0m\] "
-    ;;
-  *stg*)
-    PS1="\[\e[1;96m\][\[\e[1;31m\]\u\[\e[1;96m\]@\h:\[\e[0;39m\] \w\[\e[1;96m\]]#\[\e[0m\] "
-    ;;
-  *test*)
-    PS1="\[\e[1;34m\][\[\e[1;31m\]\u\[\e[1;34m\]@\h:\[\e[0;39m\] \w\[\e[1;34m\]]#\[\e[0m\] "
-    ;;
-  *dev*)
+ case "$ENV_TYPE" in
+   *prod*rpl*)
+     PS1="[\[\e[0;33m\][\[\e[0;31m\]\u\[\e[0;33m\]@\h:\[\e[0;39m\] \w\[\e[0;33m\]]#\[\e[0m\] "
+     ;;
+   *prod*)
+     PS1="\[\e[0;31m\][\[\e[1;31m\]\u\[\e[1;31m\]@\h:\[\e[0;39m\] \w\[\e[0;31m\]]#\[\e[0m\] "
+     ;;
+   *stg*)
+     PS1="\[\e[1;96m\][\[\e[1;31m\]\u\[\e[1;96m\]@\h:\[\e[0;39m\] \w\[\e[1;96m\]]#\[\e[0m\] "
+     ;;
+   *test*)
+     PS1="\[\e[1;34m\][\[\e[1;31m\]\u\[\e[1;34m\]@\h:\[\e[0;39m\] \w\[\e[1;34m\]]#\[\e[0m\] "
+     ;;
+   *dev*)
+     PS1="\[\e[1;32m\][\[\e[1;31m\]\u\[\e[1;32m\]@\h:\[\e[0;39m\] \w\[\e[1;32m\]]#\[\e[0m\] "
+     ;;
+   *)
     PS1="\[\e[1;32m\][\[\e[1;31m\]\u\[\e[1;32m\]@\h:\[\e[0;39m\] \w\[\e[1;32m\]]#\[\e[0m\] "
-    ;;
-  *)
-    PS1="\[\e[1;32m\][\[\e[1;31m\]\u\[\e[1;32m\]@\h:\[\e[0;39m\] \w\[\e[1;32m\]]#\[\e[0m\] "
-    ;;
-esac
-
+     ;;
+ esac
+fi
 EOF
-	echo -e "╰┈➤   ✅  ${GREEN}Bash prompt successfully configured!${RESET}"
+    
+	    echo -e "╰┈➤   ✅  ${GREEN}Bash prompt successfully configured!${RESET}"
     fi
 }
 
@@ -409,7 +408,7 @@ function bash_history_check() {
 		echo -e "❌  ${RED}Bash history is not configured.${RESET}"
 	fi
     else
-	echo
+	    echo
         echo -e "❌  ${RED}Bash history is not configured.${RESET}"
     fi
 }
