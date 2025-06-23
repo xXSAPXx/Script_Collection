@@ -16,13 +16,13 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("prompt_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check")
-func_list_sys_config=("prompt_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config")
+func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check")
+func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config")
 
 
 
 # Function to display help:
-show_help() {
+function show_help() {
     echo "===================================================================================================================="
     echo
     echo -e "${GREEN}Possible Options For Execution:${RESET} 🔧"
@@ -41,7 +41,7 @@ show_help() {
 
 
 # Function to print VM details
-print_vm_details() {
+function print_vm_details() {
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "System Information:"
@@ -71,7 +71,7 @@ print_vm_details() {
 
 
 # Function to check for system updates
-check_system_updates() {
+function check_system_updates() {
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "Checking for System Updates:"
@@ -113,7 +113,7 @@ check_system_updates() {
 
 
 # Function to update system packages
-update_system() {
+function update_system() {
     echo -e "_________________________________________________________________________________"
     echo
     
@@ -180,7 +180,7 @@ update_system() {
 
 
 #  Function to check if EPEL Repo is installed
-check_epel_repo() {
+function check_epel_repo() {
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "Checking Installed Repositories:"
@@ -199,7 +199,7 @@ check_epel_repo() {
 
 
 #  Function to install EPEL Repo
-install_epel_repo() {
+function install_epel_repo() {
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "Checking Installed Repositories:"
@@ -226,7 +226,7 @@ install_epel_repo() {
 
 
 # Function to check installed packages:
-check_installed_packages() {
+function check_installed_packages() {
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "Checking Installed Packages:"
@@ -246,7 +246,7 @@ check_installed_packages() {
 
 
 # Function to install missing packages:
-install_missing_packages() {
+function install_missing_packages() {
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "Installing Missing Packages:"
@@ -273,7 +273,7 @@ install_missing_packages() {
 
 
 # Function to initiate all check functions in (func_list_sys_checks):
-check_system_config() {
+function check_system_config() {
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "Checking System Configuration:"
@@ -290,7 +290,7 @@ check_system_config() {
 }
 
 # Function to initiate all system configure functions in (func_list_sys_config):
-fix_system_config() {
+function fix_system_config() {
     echo -e "_________________________________________________________________________________"
     echo
     
@@ -319,13 +319,13 @@ fix_system_config() {
 ########################################################## SYSTEM CHECK / CONFIG FUNCTIONS ##########################################################
 ########################################################## SYSTEM CHECK / CONFIG FUNCTIONS ##########################################################
 # Function for checking prompt_configuration:
-prompt_check() {
+function bash_profile_check() {
 
     BASH_PROMPT_SH_FILE=/etc/profile.d/bash_profile.sh
 
     # Check if prompt is already configured:
     if [[ -f "$BASH_PROMPT_SH_FILE" ]]; then
-        if grep -qE '^\s*PS1=' "$BASH_PROMPT_SH_FILE"; then
+        if grep -qE '^\s*# Custom Bash Profile Settings:' "$BASH_PROMPT_SH_FILE"; then
             echo
             echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
         else
@@ -340,24 +340,54 @@ prompt_check() {
 
 
 # Function for installing prompt_configuration:
-prompt_config() {
+function bash_profile_config() {
 
-    touch /etc/profile.d/bash_profile.sh &>/dev/null
     BASH_PROMPT_SH_FILE=/etc/profile.d/bash_profile.sh
 
     # Check if the prompt is already configured:
-    if grep -qE '^\s*PS1=' "$BASH_PROMPT_SH_FILE"; then
+    if grep -qE '^\s*# Custom Bash Profile Settings:' "$BASH_PROMPT_SH_FILE"; then
 	echo
 	echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
     else
 	echo -e "${YELLOW}Bash prompt is not configured. Setting it now...${RESET}"
 
 	# Append the prompt configuration to file:
-	cat <<'EOF' > "$BASH_PROMPT_SH_FILE"
-# If user ID = 0 then set red color for the prompt:
+	cat <<EOF > "$BASH_PROMPT_SH_FILE"
+# Custom Bash Profile Settings:
+
+# If user ID = 1(ROOT) then set red color for the prompt:
 if [ "$(id -u)" -eq 0 ]; then
+
+# Aliases: 
+command -v bat >/dev/null 2>&1 && { alias cat='bat -pp'; }
+command -v zoxide >/dev/null 2>&1 && { eval "\$(zoxide init --cmd cd bash)"; }
+
+
     PS1='[\[\e[1;31m\]\u\e[0m@\h \w ]# '
-fi
+
+ENV_TYPE=$(hostname -s | tr '[:upper:]' '[:lower:]')
+
+case "$ENV_TYPE" in
+  *prod*rpl*)
+    PS1="[\[\e[0;33m\][\[\e[0;31m\]\u\[\e[0;33m\]@\h:\[\e[0;39m\] \w\[\e[0;33m\]]#\[\e[0m\] "
+    ;;
+  *prod*)
+    PS1="\[\e[0;31m\][\[\e[1;31m\]\u\[\e[1;31m\]@\h:\[\e[0;39m\] \w\[\e[0;31m\]]#\[\e[0m\] "
+    ;;
+  *stg*)
+    PS1="\[\e[1;96m\][\[\e[1;31m\]\u\[\e[1;96m\]@\h:\[\e[0;39m\] \w\[\e[1;96m\]]#\[\e[0m\] "
+    ;;
+  *test*)
+    PS1="\[\e[1;34m\][\[\e[1;31m\]\u\[\e[1;34m\]@\h:\[\e[0;39m\] \w\[\e[1;34m\]]#\[\e[0m\] "
+    ;;
+  *dev*)
+    PS1="\[\e[1;32m\][\[\e[1;31m\]\u\[\e[1;32m\]@\h:\[\e[0;39m\] \w\[\e[1;32m\]]#\[\e[0m\] "
+    ;;
+  *)
+    PS1="\[\e[1;32m\][\[\e[1;31m\]\u\[\e[1;32m\]@\h:\[\e[0;39m\] \w\[\e[1;32m\]]#\[\e[0m\] "
+    ;;
+esac
+
 EOF
 	echo -e "╰┈➤   ✅  ${GREEN}Bash prompt successfully configured!${RESET}"
     fi
@@ -366,7 +396,7 @@ EOF
 
 
 # Function to check if bash history is configured:
-bash_history_check() {
+function bash_history_check() {
 
     BASH_HISTORY_SH_FILE=/etc/profile.d/bash_history.sh
 	
@@ -387,7 +417,7 @@ bash_history_check() {
 
 
 # Function to configure bash history:
-bash_history_config() {
+function bash_history_config() {
     
     touch /etc/profile.d/bash_history.sh &>/dev/null
     BASH_HISTORY_SH_FILE=/etc/profile.d/bash_history.sh
@@ -430,7 +460,7 @@ EOF
 
 
 # Function to check VM time format:
-time_format_check() {
+function time_format_check() {
 	
     TIME_FORMAT_CONFIG_FILE="/etc/locale.conf"
 	
@@ -446,7 +476,7 @@ time_format_check() {
 
 
 # Function to configure VM time format:
-time_format_config() {
+function time_format_config() {
 	
     TIME_FORMAT_CONFIG_FILE="/etc/locale.conf"
     	
@@ -467,7 +497,7 @@ time_format_config() {
 
 
 # Function to check VM swappiness:
-swappiness_check() {
+function swappiness_check() {
 
     SWAPPINESS_VALUE=$(cat /proc/sys/vm/swappiness)
 
@@ -483,7 +513,7 @@ swappiness_check() {
 
 
 # Function to configure VM swappiness:
-swappiness_config() {
+function swappiness_config() {
 
     SWAPPINESS_SYSTEM_FILE="/proc/sys/vm/swappiness"
     SWAPPINESS_VALUE=$(cat $SWAPPINESS_SYSTEM_FILE)
@@ -511,7 +541,7 @@ swappiness_config() {
 
 
 # Function to check DNF settings:
-dnf_check() {
+function dnf_check() {
 
     DNF_CONF_FILE="/etc/dnf/dnf.conf"
 
@@ -532,9 +562,18 @@ dnf_check() {
 
 
 # Function to configure DNF settings:
-dnf_config() {
+function dnf_config() {
 
     DNF_CONF_FILE="/etc/dnf/dnf.conf"
+    LOCATION_CODE=$(curl -s https://ipinfo.io/country)
+
+    CPU_COUNT=$(nproc --all) 
+    if [ "$CPU_COUNT" -ge 8 ]; then 
+        CPU_COUNT=4 
+    else 
+        CPU_COUNT=1 
+    fi
+
 
     if [[ -f "$DNF_CONF_FILE" ]]; then
         if grep -qE '^\s*# DNF Custom Configuration Settings:' "$DNF_CONF_FILE"; then
@@ -545,63 +584,23 @@ dnf_config() {
             echo -e "${YELLOW}Configuring DNF settings...${RESET}"
 
             # Append the configuration to the file:
-            cat <<'EOF' > "$DNF_CONF_FILE"
+            cat <<EOF > "$DNF_CONF_FILE"
 # DNF Custom Configuration Settings:
 [main]
 
-################################# MAIN SETTINGS #################################
-
-# Log file location
-logfile=/var/log/dnf.log
-
-# Control whether to use gpgcheck (verify package signatures)
 gpgcheck=1
-
-# Enable fastestmirror plugin (helps speed up downloads)
 fastestmirror=True
-
-# Limits the number of versions kept for install-only packages
-installonly_limit=3
-
-# Best architecture match (useful for x86_64 installs)
 best=True
-
-# Skip broken packages instead of failing
+deltarpm=True
+clean_requirements_on_remove=True
+installonly_limit=3
+install_weak_deps=True
 skip_if_unavailable=False
 
-# Automatically remove dependencies that are no longer used
-clean_requirements_on_remove=True
-
-# Set to True to automatically install weak dependencies
-install_weak_deps=True
-
-# Use delta RPMs to save bandwidth
-deltarpm=True
-
-# Allow downgrade of packages when needed
-allow_downgrade=True
-
-# Number of times to retry a failed download
-retries=5
-
-
-################################# CACHE / METADATA SETTINGS #################################
-
-# Number of packages to keep in cache
-keepcache=TRUE
-
-# Set metadata expiration period (default is 48h)
-metadata_expire=6h
-
-
-################################# PERFORMANCE SETTINGS #################################
-
-# Maximum parallel downloads
-max_parallel_downloads=4
-
-# Set the number of threads used by DNF (0 = automatic, can set to number of CPU cores)
-#thread_limit=0
-
+metadata_timer_sync=3600
+bandwidth=1M
+max_parallel_downloads=${CPU_COUNT}
+country=${LOCATION_CODE}
 
 EOF
 
@@ -623,8 +622,8 @@ EOF
 #### KERNEL FREE KB CHECK AND CONF / DIRTY VM RATIO 
 #### DELAY ACCOUNTING / for iotop
 #### UDEV RULES 
-#### Jemmaloc of needed
-#### Available packages for installation 
+#### Jemmaloc if needed
+#### Available packages for installation (show commands for installation)
 
 
 
