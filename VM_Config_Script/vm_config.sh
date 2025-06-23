@@ -27,12 +27,12 @@ show_help() {
     echo
     echo -e "${GREEN}Possible Options For Execution:${RESET} 🔧"
     echo
-    echo -e "  ${CYAN}--report${RESET}         | Show VM details / Check installed packages / Check for OS Updates."
-    echo -e "  ${CYAN}--fix${RESET}            | Check if required packages and repositories are installed - if not, install them."
-    echo -e "  ${CYAN}--sys_report${RESET}     | Show VM System Configuration -- Prompt / History / Time / etc..."
-    echo -e "  ${CYAN}--sys_conf${RESET}       | Configure Prompt / History / Time / etc..."
-    echo -e "  ${CYAN}--update${RESET}         | Check If System Packages are updated - if not, update the system."
-    echo -e "  ${CYAN}--help${RESET}           | Display this help message."
+    echo -e "  ${CYAN}--report${RESET}          | Show VM details / Check installed packages / Check for OS Updates."
+    echo -e "  ${CYAN}--fix${RESET}             | Check if required packages and repositories are installed - if not, install them."
+    echo -e "  ${CYAN}--system_report${RESET}   | Show VM System Configuration -- Prompt / History / Time / etc..."
+    echo -e "  ${CYAN}--system_configure${RESET}| Configure Prompt / History / Time / etc..."
+    echo -e "  ${CYAN}--update${RESET}          | Check If System Packages are updated - if not, update the system."
+    echo -e "  ${CYAN}--help${RESET}            | Display this help message."
     echo
     echo "===================================================================================================================="
 
@@ -321,11 +321,11 @@ fix_system_config() {
 # Function for checking prompt_configuration:
 prompt_check() {
 
-    BASH_PROMPT_SH=/etc/profile.d/bash_profile.sh
+    BASH_PROMPT_SH_FILE=/etc/profile.d/bash_profile.sh
 
     # Check if prompt is already configured:
-    if [[ -f "$BASH_PROMPT_SH" ]]; then
-        if grep -qE '^\s*PS1=' "$BASH_PROMPT_SH"; then
+    if [[ -f "$BASH_PROMPT_SH_FILE" ]]; then
+        if grep -qE '^\s*PS1=' "$BASH_PROMPT_SH_FILE"; then
             echo
             echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
         else
@@ -343,17 +343,17 @@ prompt_check() {
 prompt_config() {
 
     touch /etc/profile.d/bash_profile.sh &>/dev/null
-    BASH_PROMPT_SH=/etc/profile.d/bash_profile.sh
+    BASH_PROMPT_SH_FILE=/etc/profile.d/bash_profile.sh
 
     # Check if the prompt is already configured:
-    if grep -qE '^\s*PS1=' "$BASH_PROMPT_SH"; then
+    if grep -qE '^\s*PS1=' "$BASH_PROMPT_SH_FILE"; then
 	echo
 	echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
     else
 	echo -e "${YELLOW}Bash prompt is not configured. Setting it now...${RESET}"
 
 	# Append the prompt configuration to file:
-	cat <<'EOF' > "$BASH_PROMPT_SH"
+	cat <<'EOF' > "$BASH_PROMPT_SH_FILE"
 # If user ID = 0 then set red color for the prompt:
 if [ "$(id -u)" -eq 0 ]; then
     PS1='[\[\e[1;31m\]\u\e[0m@\h \w ]# '
@@ -368,10 +368,10 @@ EOF
 # Function to check if bash history is configured:
 bash_history_check() {
 
-    BASH_HISTORY_SH=/etc/profile.d/bash_history.sh
+    BASH_HISTORY_SH_FILE=/etc/profile.d/bash_history.sh
 	
-    if [[ -f "$BASH_HISTORY_SH" ]]; then 
-	if grep -qE '^\s*# ROOT User Bash History Configuration:' "$BASH_HISTORY_SH"; then
+    if [[ -f "$BASH_HISTORY_SH_FILE" ]]; then 
+	if grep -qE '^\s*# ROOT User Bash History Configuration:' "$BASH_HISTORY_SH_FILE"; then
 		echo
 		echo -e "✅  ${GREEN}Bash history is already configured.${RESET}"
 	else
@@ -390,9 +390,9 @@ bash_history_check() {
 bash_history_config() {
     
     touch /etc/profile.d/bash_history.sh &>/dev/null
-    BASH_HISTORY_SH=/etc/profile.d/bash_history.sh
+    BASH_HISTORY_SH_FILE=/etc/profile.d/bash_history.sh
 
-    if grep -qE '^\s*# ROOT User Bash History Configuration:' "$BASH_HISTORY_SH"; then
+    if grep -qE '^\s*# ROOT User Bash History Configuration:' "$BASH_HISTORY_SH_FILE"; then
         echo
         echo -e "✅  ${GREEN}Bash history is already configured.${RESET}"
     else
@@ -400,7 +400,7 @@ bash_history_config() {
         echo -e "${YELLOW}Configuring Bash history settings...${RESET}"
 
         # Add history config settings:
-        cat <<'EOF' > "$BASH_HISTORY_SH"
+        cat <<'EOF' > "$BASH_HISTORY_SH_FILE"
 # ROOT User Bash History Configuration:
 
 BLUE="\e[34m"
@@ -432,14 +432,14 @@ EOF
 # Function to check VM time format:
 time_format_check() {
 	
-    CONFIG_FILE=/etc/locale.conf
+    TIME_FORMAT_CONFIG_FILE="/etc/locale.conf"
 	
-    if grep -qE '^\s*LC_TIME=' "$CONFIG_FILE"; then
-	echo
-	echo -e "✅  ${GREEN}Time Format is already configured.${RESET}"
+    if grep -qE '^\s*LC_TIME=' "$TIME_FORMAT_CONFIG_FILE"; then
+	    echo
+	    echo -e "✅  ${GREEN}Time Format is already configured.${RESET}"
     else
-	echo
-	echo -e "❌  ${RED}Time Format is not configured.${RESET}"
+	    echo
+	    echo -e "❌  ${RED}Time Format is not configured.${RESET}"
     fi
 }
 
@@ -448,19 +448,19 @@ time_format_check() {
 # Function to configure VM time format:
 time_format_config() {
 	
-    CONFIG_FILE=/etc/locale.conf
+    TIME_FORMAT_CONFIG_FILE="/etc/locale.conf"
     	
-    if grep -qE '^\s*LC_TIME=' "$CONFIG_FILE"; then
-	echo
-	echo -e "✅  ${GREEN}Time Format is already configured.${RESET}"
+    if grep -qE '^\s*LC_TIME=' "$TIME_FORMAT_CONFIG_FILE"; then
+	    echo
+	    echo -e "✅  ${GREEN}Time Format is already configured.${RESET}"
     else
-	echo
-	echo -e "${YELLOW}Time Format is not configured. Setting it now...${RESET}"
+	    echo
+	    echo -e "${YELLOW}Time Format is not configured. Setting it now...${RESET}"
 			
-	# Apply the changes using localectl
-	echo "LC_TIME=C.UTF-8" | tee -a "$CONFIG_FILE" > /dev/null
+	    # Apply the changes using localectl
+	    echo "LC_TIME=C.UTF-8" | tee -a "$TIME_FORMAT_CONFIG_FILE" > /dev/null
 			
-	echo -e "╰┈➤   ✅  ${GREEN}Time Format set successfully!${RESET}"
+	    echo -e "╰┈➤   ✅  ${GREEN}Time Format set successfully!${RESET}"
     fi	
 }
 
@@ -485,10 +485,11 @@ swappiness_check() {
 # Function to configure VM swappiness:
 swappiness_config() {
 
-    touch /etc/sysctl.d/99-swappiness.conf &>/dev/null
-    CONF_FILE="/etc/sysctl.d/99-swappiness.conf"
-    SWAPPINESS_VALUE=$(cat /proc/sys/vm/swappiness)
-
+    SWAPPINESS_SYSTEM_FILE="/proc/sys/vm/swappiness"
+    SWAPPINESS_VALUE=$(cat $SWAPPINESS_SYSTEM_FILE)
+    SWAPPINESS_CONFIG_FILE="/etc/sysctl.d/99-swappiness.conf"
+    touch $SWAPPINESS_CONFIG_FILE &>/dev/null
+    
     if [[ "$SWAPPINESS_VALUE" -eq 1 ]]; then
         echo
         echo -e "✅  ${GREEN}Swappiness is already configured to 1.${RESET}"
@@ -496,12 +497,12 @@ swappiness_config() {
         echo
         echo -e "${YELLOW}VM Swappiness is not configured. Setting it now...${RESET}"
 
-        # Set swappiness for the current session / Sysctl conf_file to persist on reboot
-        echo 1 | sudo tee /proc/sys/vm/swappiness > /dev/null
-        echo "vm.swappiness=1" | sudo tee "$CONF_FILE" > /dev/null
+        # Set swappiness for the current session / Sysctl SWAPPINESS_CONFIG_FILE to persist on reboot
+        echo 1 | sudo tee $SWAPPINESS_SYSTEM_FILE > /dev/null
+        echo "vm.swappiness=1" | sudo tee "$SWAPPINESS_CONFIG_FILE" > /dev/null
         
-        # Apply the conf_file
-        sysctl -p /etc/sysctl.d/99-swappiness.conf > /dev/null
+        # Apply the SWAPPINESS_CONFIG_FILE
+        sysctl -p $SWAPPINESS_CONFIG_FILE > /dev/null
         
         echo -e "╰┈➤   ✅  ${GREEN}Swappiness has been configured to 1.${RESET}"
     fi    
@@ -613,6 +614,22 @@ EOF
 }
 
 
+#### BASH PROFILE
+#### DISABLE SELINUX 
+#### DISABLE THP / ENABLE MHP
+#### CHECK / CONFIGURE TCP Socket Buffers 
+#### CHECK NETWORK keepalive()
+#### CHANGE AIO MAX Number 
+#### KERNEL FREE KB CHECK AND CONF / DIRTY VM RATIO 
+#### DELAY ACCOUNTING / for iotop
+#### UDEV RULES 
+#### Jemmaloc of needed
+#### Available packages for installation 
+
+
+
+
+
 
 ##########################################################################################################################################################
 #                     Main script logic                           Main script logic                               Main script logic                      #
@@ -640,10 +657,10 @@ function main() {
             install_missing_packages
             check_system_updates
             ;;
-        --sys_report)
+        --system_report)
             check_system_config
             ;;
-        --sys_conf)
+        --system_configure)
             fix_system_config
             ;;
         --update)
