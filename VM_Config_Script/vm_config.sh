@@ -13,7 +13,7 @@ YELLOW="\e[33m"
 RESET="\e[0m"
 
 # List of DNF Packages to check for and then install:
-package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
+package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bat" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
 func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check")
@@ -327,14 +327,14 @@ function bash_profile_check() {
     if [[ -f "$BASH_PROMPT_SH_FILE" ]]; then
         if grep -qE '^\s*# Custom Bash Profile Settings:' "$BASH_PROMPT_SH_FILE"; then
             echo
-            echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
+            echo -e "✅  ${GREEN}Bash profile is already configured.${RESET}"
         else
             echo
-            echo -e "❌  ${RED}Bash prompt is not configured.${RESET}"
+            echo -e "❌  ${RED}Bash profile is not configured.${RESET}"
         fi
     else
         echo
-        echo -e "❌  ${RED}Bash prompt is not configured.${RESET}"
+        echo -e "❌  ${RED}Bash profile is not configured.${RESET}"
     fi
 }
 
@@ -343,13 +343,14 @@ function bash_profile_check() {
 function bash_profile_config() {
 
     BASH_PROMPT_SH_FILE=/etc/profile.d/bash_profile.sh
-
+    ENV_TYPE=$(hostname -s | tr '[:upper:]' '[:lower:]')
+    
     # Check if the prompt is already configured:
-    if grep -qE '^\s*# Custom Bash Profile Settings:' "$BASH_PROMPT_SH_FILE"; then
+    if grep -qE '^\s*# Custom Bash Profile Settings:' "$BASH_PROMPT_SH_FILE" &>/dev/null; then
 	    echo
-	    echo -e "✅  ${GREEN}Bash prompt is already configured.${RESET}"
+	    echo -e "✅  ${GREEN}Bash profile is already configured.${RESET}"
     else
-	    echo -e "${YELLOW}Bash prompt is not configured. Setting it now...${RESET}"
+	    echo -e "${YELLOW}Bash profile is not configured. Setting it now...${RESET}"
 
 	    # Append the prompt configuration to file:
 	    cat <<EOF > "$BASH_PROMPT_SH_FILE"
@@ -362,12 +363,9 @@ if [ "$(id -u)" -eq 0 ]; then
     command -v bat >/dev/null 2>&1 && { alias cat='bat -pp'; }
     command -v zoxide >/dev/null 2>&1 && { eval "\$(zoxide init --cmd cd bash)"; }
 
-    # Prompt based on hostname
-    ENV_TYPE=$(hostname -s | tr '[:upper:]' '[:lower:]')
-
  case "$ENV_TYPE" in
    *prod*rpl*)
-     PS1="[\[\e[0;33m\][\[\e[0;31m\]\u\[\e[0;33m\]@\h:\[\e[0;39m\] \w\[\e[0;33m\]]#\[\e[0m\] "
+     PS1="\[\e[0;33m\][\[\e[0;31m\]\u\[\e[0;33m\]@\h:\[\e[0;39m\] \w\[\e[0;33m\]]#\[\e[0m\] "
      ;;
    *prod*)
      PS1="\[\e[0;31m\][\[\e[1;31m\]\u\[\e[1;31m\]@\h:\[\e[0;39m\] \w\[\e[0;31m\]]#\[\e[0m\] "
@@ -388,7 +386,7 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 EOF
     
-	    echo -e "╰┈➤   ✅  ${GREEN}Bash prompt successfully configured!${RESET}"
+	    echo -e "╰┈➤   ✅  ${GREEN}Bash profile successfully configured!${RESET}"
     fi
 }
 
