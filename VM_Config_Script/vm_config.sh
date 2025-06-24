@@ -357,7 +357,7 @@ function bash_profile_config() {
 # Custom Bash Profile Settings:
 
 # If user ID = 1(ROOT) then set red color for the prompt:
-if [ "$(id -u)" -eq 0 ]; then
+if [ "\$(id -u)" -eq 0 ]; then
 
     # Aliases: 
     command -v bat >/dev/null 2>&1 && { alias cat='bat -pp'; }
