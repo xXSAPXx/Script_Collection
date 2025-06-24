@@ -237,7 +237,7 @@ function check_installed_packages() {
             echo -e "✅  ${GREEN}$package is installed.${RESET}"
         else
             echo
-            printf '\u274c  ' && echo -e "${RED}$package is not installed.${RESET}"
+            echo -e "❌  ${RED}$package is not installed.${RESET}"
             echo
         fi
     done
@@ -519,10 +519,10 @@ function swappiness_config() {
     
     if [[ "$SWAPPINESS_VALUE" -eq 1 ]]; then
         echo
-        echo -e "✅  ${GREEN}Swappiness is already configured to 1.${RESET}"
+        echo -e "✅  ${GREEN}Swappiness is already configured to ${SWAPPINESS_VALUE}.${RESET}"
     else 
         echo
-        echo -e "${YELLOW}VM Swappiness is not configured. Setting it now...${RESET}"
+        echo -e "${YELLOW}VM Swappiness is set to ${SWAPPINESS_VALUE}. Fixing it now...${RESET}"
 
         # Set swappiness for the current session / Sysctl SWAPPINESS_CONFIG_FILE to persist on reboot
         echo 1 | sudo tee $SWAPPINESS_SYSTEM_FILE > /dev/null
