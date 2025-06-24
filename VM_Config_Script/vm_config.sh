@@ -609,8 +609,7 @@ EOF
     fi
 }
 
-
-#### BASH PROFILE
+# TO DO LIST: 
 #### DISABLE SELINUX 
 #### DISABLE THP / ENABLE MHP
 #### CHECK / CONFIGURE TCP Socket Buffers 
