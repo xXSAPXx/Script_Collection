@@ -3,8 +3,11 @@
 
 # Requirements:
 # -------------------
-#-                                /// 
-#-                                ///
+#- $ python3 --version                                        /// Check Python Version 
+#- $ pip3 install myloginpath                                 /// myloginpath (for reading MySQL login-path credentials)
+#- $ dnf install python3-devel mariadb-connector-c-devel gcc  /// mysqlclient (MySQLdb) library and 'C' compiler    
+#- $ pip3 install mysqlclient                                 /// mysqlclient (MySQLdb)     
+#- $ pip3 install prometheus-client                           /// prometheus_client Module
 
 
 # Description:
@@ -38,12 +41,12 @@ USER_FILTER = "admin|root"              # Regex for USER
 EXECUTION_TIME_WARNING_THRESHOLD = 10   # Secs
 PROCESS_STATE_FILTER = ".*"             # Regex for STATE
 INFO_TEXT_FILTER = ".*"                 # Regex for INFO
-
+INFO_MAX_LEN = 30                       # Number of CHARS for INFO
 #______________________________________________________________________________________________________________
 
 
 # Metric name & labels
-METRIC_NAME = "mysql_processlist_runtime_seconds"
+METRIC_NAME = "mysql_processlist_exporter_metrics"
 METRIC_DESC = "Runtime (seconds) of MySQL processlist entries (truncated info)"
 
 
@@ -80,7 +83,7 @@ class ProcesslistCollector(object):
                 SELECT ID, USER, HOST, DB, STATE, TIME, INFO
                 FROM performance_schema.processlist
                 WHERE TIME > %s
-                AND (%s = '' OR DB = %s)
+                AND DB = %s
                 AND USER REGEXP %s
                 AND STATE REGEXP %s
                 AND INFO REGEXP %s;
@@ -90,7 +93,7 @@ class ProcesslistCollector(object):
                     sql,
                     (
                         EXECUTION_TIME_WARNING_THRESHOLD,
-                        DATABASE_FILTER, DATABASE_FILTER,
+                        DATABASE_FILTER,
                         USER_FILTER,
                         PROCESS_STATE_FILTER,
                         INFO_TEXT_FILTER,
@@ -101,7 +104,7 @@ class ProcesslistCollector(object):
             rows = cursor.fetchall()
 
             for row in rows:
-                # Normalize and truncate fields
+                # Normalize and truncate fields: 
                 tid = str(row.get("ID") or "unknown")
                 user = (row.get("USER") or "unknown")
                 host = (row.get("HOST") or "unknown")
@@ -116,9 +119,11 @@ class ProcesslistCollector(object):
                 metric.add_metric(
                     [tid, user, host, db, state, info_text, HOSTNAME],
                     runtime,
+                print(f"[Collector INFO] metrics collected successfully:")
+
                 )
         except Exception as e:
-            print(f"[collector] error collecting processlist: {e}")
+            print(f"[Collector ERROR] error collecting processlist: {e}")
 
         finally:
             try:
@@ -134,17 +139,15 @@ class ProcesslistCollector(object):
 
 
 
-
 # =============== MAIN SCRIPT LOGIC =============== # 
 if __name__ == '__main__':
     # Register collector and start HTTP server on the specified port: 
     REGISTRY.register(ProcesslistCollector(LOGIN_PATH))
     start_http_server(EXPORTER_PORT)
-    print(f"Custom MySQL Processlist Exporter started on :{EXPORTER_PORT}/metrics")
+    print(f"Custom MySQL Processlist Exporter started on :{EXPORTER_PORT}/metrics (hostname={HOSTNAME})")
 
     # Keep Process Alive - real collection occurs on Prometheus scrape. 
     while True:
-        collect_processlist()
         time.sleep(EXPORTER_SCRAPE_INTERVAL) # Scrape Interval
 
 
