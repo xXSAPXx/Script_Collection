@@ -12,10 +12,10 @@
 
 # Description:
 # -------------------
-#- MySQL processlist exporter (Prometheus)
-#- Exposes one metric: mysql_processlist_runtime_seconds
+#- MySQL Processlist Exporter with Prometheus Client: 
+#- Exposes one metric: mysql_processlist_exporter_metrics
 #- Labels: process_id, user, host, db, state, info (truncated), hostname
-#- Uses a custom collector (GaugeMetricFamily) so metrics are rebuilt per scrape (no manual clearing)
+#- Uses a custom collector (GaugeMetricFamily) so metrics are rebuilt on every scrape (no manual clearing)
 #- Configurable filters at the top of the file 
 
 
@@ -23,6 +23,9 @@ import time
 import socket
 import myloginpath
 import MySQLdb
+import logging
+import signal
+import sys
 from prometheus_client import start_http_server, REGISTRY
 from prometheus_client.core import GaugeMetricFamily
 
@@ -30,7 +33,6 @@ from prometheus_client.core import GaugeMetricFamily
 #______________________________________________________________________________________________________________
 # Exporter Configuration Variables: 
 EXPORTER_PORT = 9105                     # Custom exporter port.
-EXPORTER_SCRAPE_INTERVAL = 30            # Scrape Interval for the exporter in secs.  
 LOGIN_PATH = 'local'                     # DB login-path. 
 HOSTNAME = socket.gethostname()          # Fetch the hostname from the host and export it as label
 
@@ -42,19 +44,26 @@ EXECUTION_TIME_WARNING_THRESHOLD = 10   # Secs
 PROCESS_STATE_FILTER = ".*"             # Regex for STATE
 INFO_TEXT_FILTER = ".*"                 # Regex for INFO
 INFO_MAX_LEN = 30                       # Number of CHARS for INFO
-#______________________________________________________________________________________________________________
 
 
-# Metric name & labels
+# Metric Name & Labels:
 METRIC_NAME = "mysql_processlist_exporter_metrics"
 METRIC_DESC = "Runtime (seconds) of MySQL processlist entries (truncated info)"
 
+#______________________________________________________________________________________________________________
+
+
+
 
 class ProcesslistCollector(object):
+
+    # ====== If no argument is passed to login_path if uses sys variable "LOGIN_PATH": ====== #  
     def __init__(self, login_path=LOGIN_PATH):
         self.login_path = login_path
 
-    def collect(self):
+    # ====== Every time Prometheus scrapes the endpoint this function is exected: ====== # 
+    # ====== Scrape interval is managed in Prometheus yaml config, not in the exporter! ====== # 
+    def collect(self): 
         """
         Called by Prometheus client when /metrics is scraped.
         We create a GaugeMetricFamily and fill it with current values.
@@ -68,8 +77,7 @@ class ProcesslistCollector(object):
         try:
             conf = myloginpath.parse(self.login_path)
         except Exception as e:
-            # Could optionally expose an exporter_up metric; here we print and return empty metric.
-            print(f"[collector] error parsing login path '{self.login_path}': {e}")
+            logging.error("Error Parsing Login Path '%s': %s", self.login_path, e)
             yield metric
             return
 
@@ -105,7 +113,7 @@ class ProcesslistCollector(object):
 
             for row in rows:
                 # Normalize and truncate fields: 
-                tid = str(row.get("ID") or "unknown")
+                id = str(row.get("ID") or "unknown")
                 user = (row.get("USER") or "unknown")
                 host = (row.get("HOST") or "unknown")
                 db = (row.get("DB") or "unknown")
@@ -117,13 +125,16 @@ class ProcesslistCollector(object):
                 runtime = float(row.get("TIME") or 0.0)
 
                 metric.add_metric(
-                    [tid, user, host, db, state, info_text, HOSTNAME],
+                    [id, user, host, db, state, info_text, HOSTNAME],
                     runtime,
-                print(f"[Collector INFO] metrics collected successfully:")
-
                 )
+                logging.info(
+                    "Metrics Scraped: process_id=%s user=%s db=%s state=%s runtime=%s", 
+                    id, user, db, state, runtime
+                )
+                
         except Exception as e:
-            print(f"[Collector ERROR] error collecting processlist: {e}")
+            logging.error("Collecting Processlist Failed: %s", e)
 
         finally:
             try:
@@ -134,21 +145,37 @@ class ProcesslistCollector(object):
             except Exception:
                 pass
 
-        # yield the metric (possibly empty)
+        # Yield the metric (possibly empty)
         yield metric
 
 
+# ==== Function for Journalctl Shutdown Message: ==== # 
+def handle_sigterm(signum, frame):
+    logging.info("MySQL Processlist Exporter shutting down...")
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
+signal.signal(signal.SIGINT, handle_sigterm)
+
 
 # =============== MAIN SCRIPT LOGIC =============== # 
+
 if __name__ == '__main__':
+
+    # Start the systemd/journalctl message logger: 
+    logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
     # Register collector and start HTTP server on the specified port: 
     REGISTRY.register(ProcesslistCollector(LOGIN_PATH))
     start_http_server(EXPORTER_PORT)
-    print(f"Custom MySQL Processlist Exporter started on :{EXPORTER_PORT}/metrics (hostname={HOSTNAME})")
+    logging.info("Custom MySQL Processlist Exporter started on :%s/metrics (hostname=%s)", EXPORTER_PORT, HOSTNAME)
 
-    # Keep Process Alive - real collection occurs on Prometheus scrape. 
+    # Keep Process Alive --- # Real Collection Occurs on Prometheus Scrape! 
     while True:
-        time.sleep(EXPORTER_SCRAPE_INTERVAL) # Scrape Interval
+        time.sleep(1) 
 
 
         
