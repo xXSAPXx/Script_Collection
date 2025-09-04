@@ -1,0 +1,16 @@
+[Unit]
+Description=Custom MySQL Processlist Exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/mysql_processlist_exporter.py
+WorkingDirectory=/opt
+Restart=no
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
