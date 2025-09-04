@@ -8,6 +8,7 @@
 #- $ dnf install python3-devel mariadb-connector-c-devel gcc  /// mysqlclient (MySQLdb) library and 'C' compiler    
 #- $ pip3 install mysqlclient                                 /// mysqlclient (MySQLdb)     
 #- $ pip3 install prometheus-client                           /// prometheus_client Module
+#- $ /etc/systemd/system/mysql_processlist_exporter.service   /// Create systemd service file as needed
 
 
 # Description:
@@ -78,8 +79,8 @@ class ProcesslistCollector(object):
             conf = myloginpath.parse(self.login_path)
         except Exception as e:
             logging.error("Error Parsing Login Path '%s': %s", self.login_path, e)
-            yield metric
-            return
+            logging.info("MySQL Processlist Exporter Shutting Down...")
+            sys.exit(0)
 
         conn = None
         cursor = None
@@ -151,7 +152,7 @@ class ProcesslistCollector(object):
 
 # ==== Function for Journalctl Shutdown Message: ==== # 
 def handle_sigterm(signum, frame):
-    logging.info("MySQL Processlist Exporter shutting down...")
+    logging.info("MySQL Processlist Exporter Shutting Down...")
     sys.exit(0)
 
 signal.signal(signal.SIGTERM, handle_sigterm)
