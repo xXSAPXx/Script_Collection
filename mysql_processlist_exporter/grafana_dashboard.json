@@ -15,7 +15,7 @@
       }
     ]
   },
-  "editable": true,
+  "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": 222,
@@ -88,7 +88,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "mysql_processlist_alert_metric_VALUE",
+          "expr": "mysql_processlist_alert_metric_VALUE{service_name=\"$service_name\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -184,7 +184,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "mysql_processlist_alert_metric_TOTAL_ROWS",
+          "expr": "mysql_processlist_alert_metric_TOTAL_ROWS{service_name=\"$service_name\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -332,7 +332,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg by (ID, USER, HOST, DB, STATE, INFO) (mysql_processlist_status_custom_metric_TIME)",
+          "expr": "avg by (ID, USER, HOST, DB, STATE, INFO) (mysql_processlist_status_custom_metric_TIME {service_name=\"$service_name\"})",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -391,12 +391,35 @@
       "type": "table"
     }
   ],
-  "preload": false,
-  "refresh": "30s",
+  "preload": true,
+  "refresh": "10s",
   "schemaVersion": 41,
-  "tags": [],
+  "tags": [
+    "MySQL"
+  ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "text": "db-dela-sb-dev-src",
+          "value": "db-dela-sb-dev-src"
+        },
+        "definition": "label_values(mysql_processlist_alert_metric_VALUE,service_name)",
+        "description": "",
+        "label": "Service Name",
+        "name": "service_name",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(mysql_processlist_alert_metric_VALUE,service_name)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 5,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-5m",
@@ -404,7 +427,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Test Query",
+  "title": "Slow Queries in Real-Time",
   "uid": "cex5seo1t0lxca",
-  "version": 61
+  "version": 73
 }
