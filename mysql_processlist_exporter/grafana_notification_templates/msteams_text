@@ -1,0 +1,42 @@
+
+####################### TEXT TEMPLATE: #######################
+
+{{ define "msteams.slowqueries.text" }}
+🛠️ Environment: {{ .CommonLabels.environment }}
+
+👉 [View Dashboard](https://pmm.delasport.com/graph/d/cex5seo1t0lxca/slow-queries-in-real-time?from=now-5m&to=now&timezone=Europe%2FKiev&orgId=1&var-service_name={{ .CommonLabels.service_name }}&refresh=10s)
+{{ end }}
+
+
+####################### TEXT PAYLOAD: #######################
+
+[
+  {
+    "status": "firing",
+    "annotations": {
+      "summary": "Instance instance1 has been down for more than 5 minutes"
+    },
+    "labels": {
+      "alertname": "InstanceDown",
+      "instance": "instance1"
+    },
+    "startsAt": "2025-09-15T11:32:15.582Z",
+    "endsAt": "2025-09-16T11:37:15.582Z",
+    "fingerprint": "a5331f0d5a9d81d4",
+    "generatorURL": "http://grafana.com/alerting/grafana/cdeqmlhvflz40f/view"
+  },
+  {
+    "status": "resolved",
+    "annotations": {
+      "summary": "CPU usage above 90%"
+    },
+    "labels": {
+      "alertname": "CpuUsage",
+      "instance": "instance1"
+    },
+    "startsAt": "2025-09-16T07:32:15.582Z",
+    "endsAt": "2025-09-16T11:32:15.582Z",
+    "fingerprint": "b77d941310f9d381",
+    "generatorURL": "http://grafana.com/alerting/grafana/oZSMdGj7z/view"
+  }
+]

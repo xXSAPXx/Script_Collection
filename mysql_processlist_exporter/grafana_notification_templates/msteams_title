@@ -1,0 +1,48 @@
+
+
+####################### TITLE TEMPLATE: #######################
+
+{{- /* Custom title for slow query alerts */ -}}
+{{ define "msteams.slowqueries.title" }}
+{{ if gt (len .Alerts.Firing) 0 }}
+[FIRING:{{ len .Alerts.Firing }}] 🚨 Slow Queries Detected on [{{ .CommonLabels.service_name }}]
+{{ else if gt (len .Alerts.Resolved) 0 }}
+[RESOLVED] ✅ Slow Queries on [{{ .CommonLabels.service_name }}]
+{{ else }}
+Slow Queries
+{{ end }}
+{{ end }}
+
+
+
+####################### TITLE PAYLOAD: #######################
+[
+  {
+    "status": "firing",
+    "annotations": {
+      "summary": "Instance instance1 has been down for more than 5 minutes"
+    },
+    "labels": {
+      "alertname": "InstanceDown",
+      "instance": "instance1"
+    },
+    "startsAt": "2025-09-15T11:32:15.582Z",
+    "endsAt": "2025-09-16T11:37:15.582Z",
+    "fingerprint": "a5331f0d5a9d81d4",
+    "generatorURL": "http://grafana.com/alerting/grafana/cdeqmlhvflz40f/view"
+  },
+  {
+    "status": "resolved",
+    "annotations": {
+      "summary": "CPU usage above 90%"
+    },
+    "labels": {
+      "alertname": "CpuUsage",
+      "instance": "instance1"
+    },
+    "startsAt": "2025-09-16T07:32:15.582Z",
+    "endsAt": "2025-09-16T11:32:15.582Z",
+    "fingerprint": "b77d941310f9d381",
+    "generatorURL": "http://grafana.com/alerting/grafana/oZSMdGj7z/view"
+  }
+]
