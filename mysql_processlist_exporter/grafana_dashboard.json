@@ -15,7 +15,7 @@
       }
     ]
   },
-  "editable": false,
+  "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": 222,
@@ -303,7 +303,7 @@
         ]
       },
       "gridPos": {
-        "h": 7,
+        "h": 11,
         "w": 24,
         "x": 0,
         "y": 8
@@ -426,8 +426,8 @@
     "to": "now"
   },
   "timepicker": {},
-  "timezone": "browser",
+  "timezone": "Europe/Kiev",
   "title": "Slow Queries in Real-Time",
   "uid": "cex5seo1t0lxca",
-  "version": 73
+  "version": 74
 }
