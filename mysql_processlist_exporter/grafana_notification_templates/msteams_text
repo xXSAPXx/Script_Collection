@@ -4,6 +4,16 @@
 {{ define "msteams.slowqueries.text" }}
 🛠️ Environment: {{ .CommonLabels.environment }}
 
+🆔 ID: {{ .CommonLabels.ID }}
+
+👤 USER: {{ .CommonLabels.USER }}
+
+🗄️ DATABASE: {{ .CommonLabels.DB }}
+
+🌐 HOST: {{ .CommonLabels.HOST }}
+
+📜 SQL: || {{ .CommonLabels.INFO }} || 
+
 👉 [View Dashboard](https://pmm.delasport.com/graph/d/cex5seo1t0lxca/slow-queries-in-real-time?from=now-5m&to=now&timezone=Europe%2FKiev&orgId=1&var-service_name={{ .CommonLabels.service_name }}&refresh=10s)
 {{ end }}
 
