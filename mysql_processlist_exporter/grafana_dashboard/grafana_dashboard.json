@@ -198,6 +198,118 @@
         "type": "prometheus",
         "uid": "FugqTr57z"
       },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 5,
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepBefore",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 3,
+            "pointSize": 8,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.6.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count by (USER) (\r\n  mysql_processlist_status_custom_metric_TIME{service_name=\"$service_name\"})",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Slow Queries By User: ",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "FugqTr57z"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -306,7 +418,7 @@
         "h": 11,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 16
       },
       "id": 1,
       "options": {
@@ -401,8 +513,8 @@
     "list": [
       {
         "current": {
-          "text": "db-dela-sb-dev-src",
-          "value": "db-dela-sb-dev-src"
+          "text": "db-dela-sb-prod-rpl02",
+          "value": "db-dela-sb-prod-rpl02"
         },
         "definition": "label_values(mysql_processlist_alert_metric_VALUE,service_name)",
         "description": "",
@@ -429,5 +541,5 @@
   "timezone": "Europe/Kiev",
   "title": "Slow Queries in Real-Time",
   "uid": "cex5seo1t0lxca",
-  "version": 74
+  "version": 85
 }
