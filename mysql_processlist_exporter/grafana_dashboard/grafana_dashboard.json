@@ -39,14 +39,21 @@
                   "color": "green",
                   "index": 0,
                   "text": "No"
-                },
-                "1": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "Yes"
                 }
               },
               "type": "value"
+            },
+            {
+              "options": {
+                "from": 1,
+                "result": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Yes"
+                },
+                "to": 1000
+              },
+              "type": "range"
             }
           ],
           "thresholds": {
@@ -265,7 +272,32 @@
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "admin"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -513,8 +545,8 @@
     "list": [
       {
         "current": {
-          "text": "db-dela-sb-prod-rpl03",
-          "value": "db-dela-sb-prod-rpl03"
+          "text": "db-dela-sb-dev-src",
+          "value": "db-dela-sb-dev-src"
         },
         "definition": "label_values(mysql_processlist_alert_metric_VALUE,service_name)",
         "description": "",
@@ -541,5 +573,5 @@
   "timezone": "Europe/Kiev",
   "title": "Slow Queries in Real-Time",
   "uid": "cex5seo1t0lxca",
-  "version": 88
+  "version": 90
 }
