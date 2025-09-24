@@ -88,7 +88,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "mysql_processlist_alert_metric_VALUE{service_name=\"$service_name\"}",
+          "expr": "(count(count by (ID) (mysql_processlist_status_custom_metric_TIME{service_name=\"$service_name\"})) > 0)\r\nor vector(0)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -176,7 +176,7 @@
         },
         "tooltip": {
           "hideZeros": false,
-          "mode": "none",
+          "mode": "single",
           "sort": "none"
         }
       },
@@ -184,13 +184,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "mysql_processlist_alert_metric_TOTAL_ROWS{service_name=\"$service_name\"}",
+          "expr": "count(count by (ID) (mysql_processlist_status_custom_metric_TIME{service_name=\"$service_name\"})) \r\nor vector(0)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Total Slow Queries: ",
+      "title": "Total Slow Queries:",
       "type": "timeseries"
     },
     {
@@ -513,8 +513,8 @@
     "list": [
       {
         "current": {
-          "text": "db-dela-sb-prod-rpl02",
-          "value": "db-dela-sb-prod-rpl02"
+          "text": "db-dela-sb-prod-rpl03",
+          "value": "db-dela-sb-prod-rpl03"
         },
         "definition": "label_values(mysql_processlist_alert_metric_VALUE,service_name)",
         "description": "",
@@ -541,5 +541,5 @@
   "timezone": "Europe/Kiev",
   "title": "Slow Queries in Real-Time",
   "uid": "cex5seo1t0lxca",
-  "version": 85
+  "version": 88
 }
