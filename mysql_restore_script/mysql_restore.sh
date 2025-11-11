@@ -16,7 +16,7 @@ BACKUP_PATH="${1:-}"
 
 if [ -z "$BACKUP_PATH" ]; then
     echo
-    echo -e "${RED}╰┈➤ Error: Missing backup file argument.${RESET}"
+    echo -e "${RED}╰┈➤ Error: Missing Xtrabackup file argument.${RESET}"
     echo "======================================================================================================================"
     echo
     echo -e " ${CYAN}--Example Usage:${RESET}       | $0 gs://delasport-mysql-backup/2025-11-02-230001-dbfull.xbstream"
@@ -30,7 +30,7 @@ fi
 echo
 echo "======================================================================================================================"
 echo
-echo -e "${GREEN} Starting MySQL restore using backup:${RESET} $BACKUP_PATH"
+echo -e "${GREEN} Starting MySQL restore using Xtrabackup:${RESET} $BACKUP_PATH"
 echo
 echo -e "${CYAN} All output is being logged to:${RESET} $LOG_FILE"
 echo
