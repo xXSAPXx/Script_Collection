@@ -74,4 +74,4 @@ RESTORE_DURATION=$((END_TIME - START_TIME))
 HOURS=$((RESTORE_DURATION / 3600))
 MINUTES=$(((RESTORE_DURATION % 3600) / 60))
 SECONDS=$((RESTORE_DURATION % 60))
-echo "${GREEN}Restore Completed - ⏳ Total restore duration: ${HOURS}h ${MINUTES}m ${SECONDS}s ${RESET}"
+echo -e "${GREEN}Restore Completed - ⏳ Total restore duration: ${HOURS}h ${MINUTES}m ${SECONDS}s ${RESET}"
