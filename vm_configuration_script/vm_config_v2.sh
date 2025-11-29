@@ -210,7 +210,7 @@ function install_epel_repo() {
         return 0
     else
         echo -e "${YELLOW}Installing EPEL repository...${RESET}"
-        sudo dnf install -y epel-release &>/dev/null
+        sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm &>/dev/null
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}EPEL repository successfully installed.${RESET}"
             echo
@@ -294,7 +294,7 @@ function fix_system_config() {
     echo -e "_________________________________________________________________________________"
     echo
     
-    # Check if the user is root
+    # Check if the user is root: 
     if [ "$(id -u)" -ne 0 ]; then
         echo
         echo -e "❌  ${RED}Must Be ROOT to alter System Configuration!${RESET}"
@@ -563,6 +563,9 @@ function dnf_config() {
 
     DNF_CONF_FILE="/etc/dnf/dnf.conf"
     LOCATION_CODE=$(curl -s https://ipinfo.io/country)
+    if [[ -z "$LOCATION_CODE" ]]; then
+        LOCATION_CODE="US"
+    fi
 
     CPU_COUNT=$(nproc --all) 
     if [ "$CPU_COUNT" -ge 8 ]; then 
@@ -579,7 +582,10 @@ function dnf_config() {
         else
             echo
             echo -e "${YELLOW}Configuring DNF settings...${RESET}"
-
+            
+            # Backup existing dnf.conf file:
+            cp "$DNF_CONF_FILE" "${DNF_CONF_FILE}_orginal_backup_$(date +%F_%T)"
+            
             # Append the configuration to the file:
             cat <<EOF > "$DNF_CONF_FILE"
 # DNF Custom Configuration Settings:
@@ -609,9 +615,14 @@ EOF
     fi
 }
 
+
+# Function to disable SELINUX:
+
+# Function to desable THP / enable MHP:
+
+
+
 # TO DO LIST: 
-#### DISABLE SELINUX 
-#### DISABLE THP / ENABLE MHP
 #### CHECK / CONFIGURE TCP Socket Buffers 
 #### CHECK NETWORK keepalive()
 #### CHANGE AIO MAX Number 
