@@ -16,8 +16,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bat" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check")
-func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config")
+func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "selinux_check" "thp_mhp_check")
+func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "selinux_config" "thp_mhp_config")
 
 
 
@@ -616,9 +616,148 @@ EOF
 }
 
 
-# Function to disable SELINUX:
 
-# Function to desable THP / enable MHP:
+# Function to check SELinux status:
+function selinux_check() {
+
+    # Check the current runtime status of SELinux
+    CURRENT_STATUS=$(getenforce)
+
+    if [[ "$CURRENT_STATUS" == "Disabled" ]]; then
+        echo
+        echo -e "✅  ${GREEN}SELinux is disabled.${RESET}"
+    else
+        echo
+        echo -e "❌  ${RED}SELinux is active (Status: $CURRENT_STATUS).${RESET}"
+    fi
+}
+
+
+
+# Function to configure (disable) SELinux:
+function selinux_config() {
+
+    SELINUX_CONF_FILE="/etc/selinux/config"
+    CURRENT_STATUS=$(getenforce)
+
+    if [[ "$CURRENT_STATUS" == "Disabled" ]]; then
+        echo
+        echo -e "✅  ${GREEN}SELinux is already disabled.${RESET}"
+    else
+        echo
+        echo -e "${YELLOW}Disabling SELinux...${RESET}"
+
+        if [[ -f "$SELINUX_CONF_FILE" ]]; then
+            
+            # Backup existing selinux config file:
+            cp "$SELINUX_CONF_FILE" "${SELINUX_CONF_FILE}_original_backup_$(date +%F_%T)"
+
+            # Change the configuration file to persist after reboot
+            # We use sed here to ensure we don't overwrite SELINUXTYPE settings
+            sed -i 's/^SELINUX=.*/SELINUX=disabled/' "$SELINUX_CONF_FILE"
+
+            # Set runtime to Permissive immediately (True disable requires reboot)
+            # This prevents it from blocking things right now without waiting for a restart
+            setenforce 0 2>/dev/null
+
+            echo -e "╰┈➤   ✅  ${GREEN}SELinux configured to disabled.${RESET}"
+            echo -e "╰┈➤   ⛔  ${YELLOW}A system reboot is required for this to take full effect.${RESET}"
+        
+        else
+            echo
+            echo -e "❌  ${RED}SELinux configuration file ($SELINUX_CONF_FILE) not found.${RESET}"
+        fi
+    fi
+}
+
+
+
+# Function to check THP / MHP:
+function thp_mhp_check() {
+    
+    # Variables: 
+    THP_ENABLED_FILE="/sys/kernel/mm/transparent_hugepage/enabled"
+    MHP_SYS_FILE="/proc/sys/vm/nr_hugepages"
+
+    # Check THP (Transparent Huge Pages)
+    # We look for "[never]" which indicates it is disabled
+    if grep -q "\[never\]" "$THP_ENABLED_FILE"; then
+        echo
+        echo -e "✅  ${GREEN}THP (Transparent Huge Pages) is disabled.${RESET}"
+    else
+        echo
+        echo -e "❌  ${RED}THP is active (Standard Huge Pages might be preferred).${RESET}"
+    fi
+
+    # Check MHP (Manual Huge Pages)
+    MHP_COUNT=$(cat "$MHP_SYS_FILE")
+    if [[ "$MHP_COUNT" -gt 0 ]]; then
+        echo
+        echo -e "✅  ${GREEN}MHP (Manual Huge Pages) is enabled. Count: $MHP_COUNT${RESET}"
+    else
+        echo
+        echo -e "⛔  ${YELLOW}MHP (Manual Huge Pages) count is 0.${RESET}"
+    fi
+}
+
+
+
+# Function to disable THP / enable MHP:
+function thp_mhp_config() {
+
+    # Variables: 
+    MHP_SYSCTL_FILE="/etc/sysctl.d/90-hugepages.conf"
+    MHP_STATUS=$(cat /proc/sys/vm/nr_hugepages)
+    THP_ENABLED_FILE="/sys/kernel/mm/transparent_hugepage/enabled"
+    THP_DEFRAG_FILE="/sys/kernel/mm/transparent_hugepage/defrag"
+    THP_STATUS=$(awk '/nr_anon_transparent_hugepages/{print $NF}' /proc/vmstat)
+
+    # Even if status is 0, we want to ensure config is set to NEVER: 
+    if [ "$THP_STATUS" -ne 0 ] && ! grep -q "\[never\]" "$THP_ENABLED_FILE"; then
+        
+        # Runtime disable: 
+        echo never > "$THP_ENABLED_FILE"
+        echo never > "$THP_DEFRAG_FILE"
+        
+        # Persistence via GRUB (Kernel Argument): 
+        if command -v grubby &>/dev/null; then
+            sudo grubby --update-kernel ALL --args transparent_hugepage=never >/dev/null 2>&1
+            echo
+            echo -e "${YELLOW}Configuring THP Pages...${RESET}"
+            echo -e "╰┈➤   ✅  ${GREEN}THP Disabled via Kernel Argument (Grubby).${RESET}"
+        else
+            echo -e "╰┈➤   ❌  ${RED}Grubby command not found. Cannot persist THP settings via Kernel.${RESET}"
+        fi
+    else
+        echo
+        echo -e "✅  ${GREEN}THP (Transparent Huge Pages) are disabled.${RESET}"
+    fi
+
+    # ---------------------------------------------------------
+    # Enable MHP (Manual Huge Pages)
+    # ---------------------------------------------------------
+
+    if [[ -f "$MHP_SYSCTL_FILE" ]]; then
+        echo
+        echo -e "⛔  ${YELLOW}A Hugepage configuration file already exists. No changes made.${RESET}"
+    elif [[ $MHP_STATUS -gt 0 ]]; then
+        echo
+        echo -e "⛔  ${YELLOW}HugePages are already configured on this system (${MHP_STATUS}). No changes made.${RESET}"
+    else
+
+        # Create file safely (no memory allocation): 
+        echo "vm.nr_hugepages=0" > "$MHP_SYSCTL_FILE"
+
+        # Apply the file (does nothing harmful because it's 0): 
+        sysctl -p "$MHP_SYSCTL_FILE" &>/dev/null
+
+        echo
+        echo -e "${YELLOW}Configuring MHP Pages...${RESET}"   
+        echo -e "╰┈➤   ✅  ${GREEN}HugePages sysctl file created safely with vm.nr_hugepages=0.${RESET}"
+    fi
+}
+
+
 
 
 
