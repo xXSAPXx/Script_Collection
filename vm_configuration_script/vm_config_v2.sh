@@ -726,6 +726,7 @@ function thp_mhp_config() {
             echo -e "${YELLOW}Configuring THP Pages...${RESET}"
             echo -e "╰┈➤   ✅  ${GREEN}THP Disabled via Kernel Argument (Grubby).${RESET}"
         else
+            echo -e "${YELLOW}Configuring THP Pages...${RESET}"
             echo -e "╰┈➤   ❌  ${RED}Grubby command not found. Cannot persist THP settings via Kernel.${RESET}"
         fi
     else
