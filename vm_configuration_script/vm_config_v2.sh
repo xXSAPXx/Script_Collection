@@ -16,8 +16,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "fastfetch" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bat" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "selinux_check" "thp_mhp_check")
-func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "selinux_config" "thp_mhp_config")
+func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check")
+func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config")
 
 
 
@@ -514,7 +514,7 @@ function swappiness_config() {
 
     SWAPPINESS_SYSTEM_FILE="/proc/sys/vm/swappiness"
     SWAPPINESS_VALUE=$(cat $SWAPPINESS_SYSTEM_FILE)
-    SWAPPINESS_CONFIG_FILE="/etc/sysctl.d/99-swappiness.conf"
+    SWAPPINESS_CONFIG_FILE="/etc/sysctl.d/70-swappiness.conf"
     touch $SWAPPINESS_CONFIG_FILE &>/dev/null
     
     if [[ "$SWAPPINESS_VALUE" -eq 1 ]]; then
@@ -706,7 +706,7 @@ function thp_mhp_check() {
 function thp_mhp_config() {
 
     # Variables: 
-    MHP_SYSCTL_FILE="/etc/sysctl.d/90-hugepages.conf"
+    MHP_SYSCTL_FILE="/etc/sysctl.d/60-hugepages.conf"
     MHP_STATUS=$(cat /proc/sys/vm/nr_hugepages)
     THP_ENABLED_FILE="/sys/kernel/mm/transparent_hugepage/enabled"
     THP_DEFRAG_FILE="/sys/kernel/mm/transparent_hugepage/defrag"
@@ -760,14 +760,201 @@ function thp_mhp_config() {
 
 
 
+# Function to check Network Performance Settings:
+function network_performance_check() {
+
+    NETWORK_SYSCTL_FILE="/etc/sysctl.d/90-network-performance.conf"
+
+    if [[ -f "$NETWORK_SYSCTL_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}Network performance settings are already configured.${RESET}"
+    else
+        echo
+        echo -e "❌  ${RED}Network performance settings are not configured.${RESET}"
+    fi
+}
+
+
+
+# Function to configure Network Performance Settings:
+function network_performance_config() {
+
+    NETWORK_SYSCTL_FILE="/etc/sysctl.d/90-network-performance.conf"
+
+    if [[ -f "$NETWORK_SYSCTL_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}Network performance settings are already configured.${RESET}"
+    else
+        echo
+        echo -e "${YELLOW}Configuring Network Performance Settings...${RESET}"
+
+        # Create the configuration file with the specified values: 
+        cat <<EOF > "$NETWORK_SYSCTL_FILE"
+# -------------------------------------------------------------------
+# Network performance tuning
+# Optimized for high-throughput, low-latency TCP workloads
+# -------------------------------------------------------------------
+
+# Max socket buffer sizes
+net.core.rmem_max = 8738140
+net.core.wmem_max = 8738140
+
+# TCP read/write buffer sizes
+net.ipv4.tcp_rmem = 4096 873814 8738140
+net.ipv4.tcp_wmem = 4096 873814 8738140
+
+# -------------------------------------------------------------------
+# Connection backlog tuning
+# -------------------------------------------------------------------
+
+net.core.netdev_max_backlog = 8192
+net.ipv4.tcp_max_syn_backlog = 4096
+
+# -------------------------------------------------------------------
+# TCP keepalive settings
+# -------------------------------------------------------------------
+
+net.ipv4.tcp_keepalive_time = 300
+net.ipv4.tcp_keepalive_intvl = 60
+net.ipv4.tcp_keepalive_probes = 5
+
+# -------------------------------------------------------------------
+# TCP congestion control & queuing
+# -------------------------------------------------------------------
+
+net.core.default_qdisc = fq
+net.ipv4.tcp_congestion_control = bbr
+
+# Reduce latency for unsent data
+net.ipv4.tcp_notsent_lowat = 262144
+EOF
+
+        # Apply the changes immediately:
+        sysctl -p "$NETWORK_SYSCTL_FILE" >/dev/null 2>&1
+        
+        # Check if apply was successful: 
+        if [ $? -eq 0 ]; then
+            echo -e "╰┈➤   ✅  ${GREEN}Network performance settings applied successfully.${RESET}"
+        else
+            echo -e "╰┈➤   ❌  ${RED}Failed to apply Network performance settings.${RESET}"
+        fi
+    fi
+}
+
+
+
+# Function to check Kernel & IO Limits:
+function kernel_io_check() {
+    IO_SYSCTL_FILE="/etc/sysctl.d/20-kernel-io.conf"
+
+    if [[ -f "$IO_SYSCTL_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}Kernel IO & Delay Accounting settings are already configured.${RESET}"
+    else
+        echo
+        echo -e "❌  ${RED}Kernel IO & Delay Accounting settings are not configured.${RESET}"
+    fi
+}
+
+
+
+# Function to configure Kernel & IO Limits:
+function kernel_io_config() {
+    IO_SYSCTL_FILE="/etc/sysctl.d/20-kernel-io.conf"
+
+    if [[ -f "$IO_SYSCTL_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}Kernel IO & Delay Accounting settings are already configured.${RESET}"
+    else
+        echo
+        echo -e "${YELLOW}Configuring Kernel IO & Delay Accounting...${RESET}"
+
+        cat <<EOF > "$IO_SYSCTL_FILE"
+# Async I/O limit (often required for Databases like MySQL)
+fs.aio-max-nr = 1048576
+
+# Enable Task Delay Accounting (required for iotop to show disk I/O per process)
+kernel.task_delayacct = 1
+EOF
+
+        sysctl -p "$IO_SYSCTL_FILE" >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo -e "╰┈➤   ✅  ${GREEN}Kernel IO settings applied successfully.${RESET}"
+        else
+            echo -e "╰┈➤   ❌  ${RED}Failed to apply Kernel IO settings.${RESET}"
+        fi
+    fi
+}
+
+
+
+# Function to check VM Memory & Dirty Ratios:
+function vm_memory_check() {
+    VM_SYSCTL_FILE="/etc/sysctl.d/30-vm-memory.conf"
+
+    if [[ -f "$VM_SYSCTL_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}VM Memory & Dirty Ratio settings are already configured.${RESET}"
+    else
+        echo
+        echo -e "❌  ${RED}VM Memory & Dirty Ratio settings are not configured.${RESET}"
+    fi
+}
+
+
+
+# Function to configure VM Memory & Dirty Ratios:
+function vm_memory_config() {
+    VM_SYSCTL_FILE="/etc/sysctl.d/30-vm-memory.conf"
+
+    if [[ -f "$VM_SYSCTL_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}VM Memory & Dirty Ratio settings are already configured.${RESET}"
+    else
+        echo
+        echo -e "${YELLOW}Configuring VM Memory & Dirty Ratios...${RESET}"
+
+        # Calculate Memory Reserve
+        # Get Total Memory in KB
+        TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+        
+        # Threshold: ~16GB (16111652 KB)
+        if [ "$TOTAL_MEM_KB" -ge 16111652 ]; then
+            MIN_FREE_KB=1048576   # Reserve 1GB
+            echo -e "╰┈➤   ℹ️  System Memory is >16GB. Reserving 1GB for Kernel."
+        else
+            MIN_FREE_KB=131072    # Reserve 128MB
+            echo -e "╰┈➤   ℹ️  System Memory is <16GB. Reserving 128MB for Kernel."
+        fi
+
+        cat <<EOF > "$VM_SYSCTL_FILE"
+# Memory Reserve (Calculated based on Total RAM)
+vm.min_free_kbytes = $MIN_FREE_KB
+
+# Dirty Memory Settings (Optimized for higher throughput writes)
+# Start writing to disk when 128MB is dirty
+vm.dirty_background_bytes = 134217728
+
+# Block processes from writing new data when 256MB is dirty
+vm.dirty_bytes = 268435456
+
+# Expire old dirty data faster to avoid huge I/O spikes
+vm.dirty_expire_centisecs = 500
+vm.dirty_writeback_centisecs = 100
+EOF
+
+        sysctl -p "$VM_SYSCTL_FILE" >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo -e "╰┈➤   ✅  ${GREEN}VM Memory settings applied successfully.${RESET}"
+        else
+            echo -e "╰┈➤   ❌  ${RED}Failed to apply VM Memory settings.${RESET}"
+        fi
+    fi
+}
 
 
 # TO DO LIST: 
-#### CHECK / CONFIGURE TCP Socket Buffers 
-#### CHECK NETWORK keepalive()
 
-#### CHANGE AIO MAX Number 
-#### KERNEL FREE KB CHECK AND CONF / DIRTY VM RATIO 
 #### DELAY ACCOUNTING / for iotop
 #### UDEV RULES 
 #### Jemmaloc if needed
