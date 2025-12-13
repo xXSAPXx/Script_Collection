@@ -971,8 +971,6 @@ EOF
 
 
 # TO DO LIST: 
-
-#### DELAY ACCOUNTING / for iotop
 #### UDEV RULES 
 #### Jemmaloc if needed
 #### Available packages for installation (show commands for installation)
