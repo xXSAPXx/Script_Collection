@@ -910,47 +910,64 @@ function vm_memory_config() {
     if [[ -f "$VM_SYSCTL_FILE" ]]; then
         echo
         echo -e "✅  ${GREEN}VM Memory & Dirty Ratio settings are already configured.${RESET}"
+        return
+    fi
+
+    echo
+    echo -e "${YELLOW}Configuring VM Memory & Dirty Ratios...${RESET}"
+
+    # Get Total Memory in KB:
+    TOTAL_MEM_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+
+    # Calculate 1% of RAM:
+    MIN_FREE_KB=$(( TOTAL_MEM_KB / 100 ))
+
+    # Safety bounds: 
+    MIN_LIMIT_KB=65536     # 64MB
+    MAX_LIMIT_KB=1048576   # 1GB
+
+    if [ "$MIN_FREE_KB" -lt "$MIN_LIMIT_KB" ]; then
+        MIN_FREE_KB=$MIN_LIMIT_KB
+        REASON="(Minimum clamp applied)"
+    elif [ "$MIN_FREE_KB" -gt "$MAX_LIMIT_KB" ]; then
+        MIN_FREE_KB=$MAX_LIMIT_KB
+        REASON="(Maximum clamp applied)"
     else
-        echo
-        echo -e "${YELLOW}Configuring VM Memory & Dirty Ratios...${RESET}"
+        REASON="(1% of total RAM)"
+    fi
 
-        # Calculate Memory Reserve
-        # Get Total Memory in KB
-        TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-        
-        # Threshold: ~16GB (16111652 KB)
-        if [ "$TOTAL_MEM_KB" -ge 16111652 ]; then
-            MIN_FREE_KB=1048576   # Reserve 1GB
-            echo -e "╰┈➤   ℹ️  System Memory is >16GB. Reserving 1GB for Kernel."
-        else
-            MIN_FREE_KB=131072    # Reserve 128MB
-            echo -e "╰┈➤   ℹ️  System Memory is <16GB. Reserving 128MB for Kernel."
-        fi
+    echo -e "╰┈➤   ℹ️  Total RAM: $((TOTAL_MEM_KB / 1024)) MB"
+    echo -e "╰┈➤   ℹ️  vm.min_free_kbytes set to $((MIN_FREE_KB / 1024)) MB $REASON"
 
-        cat <<EOF > "$VM_SYSCTL_FILE"
-# Memory Reserve (Calculated based on Total RAM)
+    cat <<EOF > "$VM_SYSCTL_FILE"
+# -------------------------------------------------------------------
+# VM Memory Reserve (calculated dynamically)
+# Approximately 1% of total RAM, clamped between 32MB and 512MB
+# -------------------------------------------------------------------
 vm.min_free_kbytes = $MIN_FREE_KB
 
-# Dirty Memory Settings (Optimized for higher throughput writes)
-# Start writing to disk when 128MB is dirty
+# -------------------------------------------------------------------
+# Dirty Memory Settings (DB-friendly, smoother writeback)
+# -------------------------------------------------------------------
+
+# Start background writeback when 128MB is dirty
 vm.dirty_background_bytes = 134217728
 
-# Block processes from writing new data when 256MB is dirty
+# Block new writes when 256MB is dirty
 vm.dirty_bytes = 268435456
 
-# Expire old dirty data faster to avoid huge I/O spikes
+# Expire dirty pages quickly to avoid I/O bursts
 vm.dirty_expire_centisecs = 500
 vm.dirty_writeback_centisecs = 100
 EOF
 
-        sysctl -p "$VM_SYSCTL_FILE" >/dev/null 2>&1
-        if [ $? -eq 0 ]; then
-            echo -e "╰┈➤   ✅  ${GREEN}VM Memory settings applied successfully.${RESET}"
-        else
-            echo -e "╰┈➤   ❌  ${RED}Failed to apply VM Memory settings.${RESET}"
-        fi
+    if sysctl -p "$VM_SYSCTL_FILE" >/dev/null 2>&1; then
+        echo -e "╰┈➤   ✅  ${GREEN}VM Memory settings applied successfully.${RESET}"
+    else
+        echo -e "╰┈➤   ❌  ${RED}Failed to apply VM Memory settings.${RESET}"
     fi
 }
+
 
 
 # TO DO LIST: 
