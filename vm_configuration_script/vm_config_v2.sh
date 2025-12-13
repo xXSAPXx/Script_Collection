@@ -936,8 +936,8 @@ function vm_memory_config() {
         REASON="(1% of total RAM)"
     fi
 
-    echo -e "╰┈➤   ℹ️  Total RAM: $((TOTAL_MEM_KB / 1024)) MB"
-    echo -e "╰┈➤   ℹ️  vm.min_free_kbytes set to $((MIN_FREE_KB / 1024)) MB $REASON"
+    echo -e "╰┈➤   ⛔  ${YELLOW}Total RAM: $((TOTAL_MEM_KB / 1024)) MB${RESET}"
+    echo -e "╰┈➤   ⛔  ${YELLOW}vm.min_free_kbytes set to $((MIN_FREE_KB / 1024)) MB $REASON ${RESET}"
 
     cat <<EOF > "$VM_SYSCTL_FILE"
 # -------------------------------------------------------------------
