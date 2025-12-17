@@ -16,8 +16,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "fastfetch" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bat" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check")
-func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config")
+func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check" "udev_rules_check")
+func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config" "udev_rules_config")
 
 
 
@@ -970,8 +970,54 @@ EOF
 
 
 
+# Function to check Udev rules:
+function udev_rules_check() {
+
+    UDEV_RULE_FILE="/etc/udev/rules.d/90-read-ahead.rules"
+
+    if [[ -f "$UDEV_RULE_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}Udev rules are already configured.${RESET}"
+    else
+        echo
+        echo -e "❌  ${RED}Udev rules are not configured.${RESET}"
+    fi
+}
+
+
+
+# Function to configure Udev rules:
+function udev_rules_config() {
+
+    UDEV_RULE_FILE="/etc/udev/rules.d/90-read-ahead.rules"
+
+    if [[ -f "$UDEV_RULE_FILE" ]]; then
+        echo
+        echo -e "✅  ${GREEN}Udev rules are already configured.${RESET}"
+    else
+        echo
+        echo -e "${YELLOW}Configuring Udev rules...${RESET}"
+        
+        # Create the Udev rules file with the specified settings:
+        cat <<EOF > "$UDEV_RULE_FILE"
+# Custom IO Scheduler and Read-Ahead Config:
+SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048"
+EOF
+
+        # Reload Udev rules immediately without rebooting: 
+        udevadm control --reload-rules && udevadm trigger
+        
+        if [ $? -eq 0 ]; then
+             echo -e "╰┈➤   ✅  ${GREEN}Udev rules applied and triggered successfully.${RESET}"
+        else
+             echo -e "╰┈➤   ❌  ${RED}Failed to trigger Udev rules.${RESET}"
+        fi
+    fi
+}
+
+
+
 # TO DO LIST: 
-#### UDEV RULES 
 #### Jemmaloc if needed
 #### Available packages for installation (show commands for installation)
 
