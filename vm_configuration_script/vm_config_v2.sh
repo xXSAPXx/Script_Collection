@@ -1002,6 +1002,9 @@ function udev_rules_config() {
         cat <<EOF > "$UDEV_RULE_FILE"
 # Custom IO Scheduler and Read-Ahead Config:
 SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048"
+
+# Added rule for (VMs) NVMe devices and ATTR{queue/add_random}="0"
+# SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]|nvme[0-9]*", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048", ATTR{queue/add_random}="0"
 EOF
 
         # Reload Udev rules immediately without rebooting: 
