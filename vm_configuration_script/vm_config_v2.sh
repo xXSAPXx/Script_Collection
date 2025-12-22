@@ -44,26 +44,29 @@ function show_help() {
 function print_vm_details() {
     echo -e "_________________________________________________________________________________"
     echo
-    echo -e "System Information:"
+    echo -e ${LBLUE}"System Information:"${RESET}
     echo -e "---------------------"
-    echo -e "Static Hostname:        $(hostnamectl --static)"
-    echo -e "Operating System:       $(uname -o)"
-    echo -e "Distribution:           $(grep PRETTY_NAME /etc/os-release | cut -d '=' -f 2 | tr -d '\"')"
-    echo -e "Kernel Version:         $(uname -r)"
-    echo -e "Architecture:           $(uname -m)"
+    echo -e "${CYAN}Static Hostname:${RESET}        $(hostnamectl --static)"
+    echo -e "${CYAN}Operating System:${RESET}       $(uname -o)"
+    echo -e "${CYAN}Distribution:${RESET}           $(grep PRETTY_NAME /etc/os-release | cut -d '=' -f 2 | tr -d '\"')"
+    echo -e "${CYAN}Kernel Version:${RESET}         $(uname -r)"
+    echo -e "${CYAN}Architecture:${RESET}           $(uname -m)"
+    echo -e "${CYAN}Virtualization Type:${RESET}    $(systemd-detect-virt)"
+    echo -e "${CYAN}Product Name:${RESET}           $(dmidecode -s system-product-name)"
     echo
     echo
-    echo -e "Hardware Information:"
+    echo -e ${LBLUE}"Hardware Information:"${RESET}
     echo -e "---------------------"
-    echo -e "CPU:                   $(grep -m 1 'model name' /proc/cpuinfo | cut -d ':' -f 2 | xargs)"
-    echo -e "Hardware Vendor:       $(dmidecode -s system-manufacturer)"
-    echo -e "Firmware Version:      $(dmidecode -s bios-version)"
+    echo -e "${CYAN}CPU:${RESET}                   $(lscpu | awk -F: '/^Model name/ {print $2}' | xargs)"
+    echo -e "${CYAN}CPU Cores:${RESET}             $(nproc)"
+    echo -e "${CYAN}Hardware Vendor:${RESET}       $(dmidecode -s system-manufacturer)"
+    echo -e "${CYAN}Firmware Version:${RESET}      $(dmidecode -s bios-version)"
     echo
     echo
-    echo -e "Additional Details:"
+    echo -e ${LBLUE}"Additional Details:"${RESET}
     echo -e "---------------------"
-    echo -e "Support End Date:      $(grep SUPPORT_END /etc/os-release | cut -d '=' -f 2 | tr -d '\"')"
-    echo -e "Bug Report URL:        $(grep BUG_REPORT_URL /etc/os-release | cut -d '=' -f 2 | tr -d '\"')"
+    echo -e "${CYAN}Support End Date:${RESET}      $(grep SUPPORT_END /etc/os-release | cut -d '=' -f 2 | tr -d '\"')"
+    echo -e "${CYAN}Bug Report URL:${RESET}        $(grep BUG_REPORT_URL /etc/os-release | cut -d '=' -f 2 | tr -d '\"')"
     echo
 }
 
@@ -1000,7 +1003,7 @@ function udev_rules_config() {
         
         # Create the Udev rules file with the specified settings:
         cat <<EOF > "$UDEV_RULE_FILE"
-# Custom IO Scheduler and Read-Ahead Config:
+# Custom IO Scheduler and Read-Ahead Config: (NOT for NVMe devices!)
 SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048"
 
 # Added rule for (VMs) NVMe devices and ATTR{queue/add_random}="0"
