@@ -61,6 +61,7 @@ function print_vm_details() {
     echo -e "${CYAN}CPU Cores:${RESET}             $(nproc)"
     echo -e "${CYAN}Hardware Vendor:${RESET}       $(dmidecode -s system-manufacturer)"
     echo -e "${CYAN}Firmware Version:${RESET}      $(dmidecode -s bios-version)"
+    echo -e "${CYAN}Storage Device Type:${RESET}   $(lsblk -d -o NAME,ROTA,TRAN --noheadings | awk '{printf "NAME:%s | ROTA:%s | TRAN:%s  ", $1,$2,$3}')"
     echo
     echo
     echo -e ${LBLUE}"Additional Details:"${RESET}
