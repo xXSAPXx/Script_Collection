@@ -16,8 +16,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "fastfetch" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bat" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check" "udev_rules_check")
-func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config" "udev_rules_config")
+func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "dnf_automatic_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check" "udev_rules_check")
+func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "dnf_automatic_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config" "udev_rules_config")
 
 
 
@@ -621,6 +621,51 @@ EOF
 
 
 
+# Function to check if Automatic DNF Updates are Metadata Refresh enabled:
+function dnf_automatic_check() {
+    
+    # Check if any Automatic DNF timers are active -- The commands return exit code 0 (true) if timer is active:
+    if systemctl is-active dnf-makecache.timer >/dev/null || systemctl is-active dnf-automatic.timer >/dev/null; then
+        echo
+        echo -e "❌  ${RED}Automatic DNF updates (or metadata refresh) are ENABLED.${RESET}"
+    else
+        echo
+        echo -e "✅  ${GREEN}Automatic DNF updates are disabled.${RESET}"
+    fi
+}
+
+
+
+# Function to disable Automatic DNF Updates or Metadata Refresh:
+function dnf_automatic_config() {
+    
+    # Check if any Automatic DNF timers are active -- The commands return exit code 0 (true) if timer is active:
+    if systemctl is-active dnf-makecache.timer >/dev/null || systemctl is-active dnf-automatic.timer >/dev/null; then
+        echo
+        echo -e "${YELLOW}Disabling Automatic DNF updates...${RESET}"
+        
+        
+        # 1. dnf-makecache.timer (Updates metadata in background - causes IO)
+        # 2. dnf-automatic.timer (Installs updates automatically - dangerous for DBs)
+
+        # Stop and disable both timers:
+        systemctl stop dnf-makecache.timer dnf-automatic.timer 2>/dev/null
+        systemctl disable dnf-makecache.timer dnf-automatic.timer 2>/dev/null
+        
+        # Verification: 
+        if systemctl is-active dnf-makecache.timer >/dev/null || systemctl is-active dnf-automatic.timer >/dev/null; then
+            echo -e "╰┈➤   ⛔  ${YELLOW}Attempted to disable, but a DNF timer is still active!${RESET}"
+        else
+            echo -e "╰┈➤   ✅  ${GREEN}Automatic DNF updates disabled successfully.${RESET}"
+        fi
+    else
+        echo
+        echo -e "✅  ${GREEN}Automatic DNF updates are already disabled.${RESET}"
+    fi
+}
+
+
+
 # Function to check SELinux status:
 function selinux_check() {
 
@@ -751,7 +796,27 @@ function thp_mhp_config() {
     else
 
         # Create file safely (no memory allocation): 
-        echo "vm.nr_hugepages=0" > "$MHP_SYSCTL_FILE"
+         cat <<EOF > "$MHP_SYSCTL_FILE"
+# === HugePages configuration (2 MB pages) ===
+# Check HugePage size:
+#   grep Hugepagesize /proc/meminfo
+#
+# Formula:
+#   RAM_GB × 512 = vm.nr_hugepages
+
+#vm.nr_hugepages=2048    # 4 GB
+#vm.nr_hugepages=4096    # 8 GB
+#vm.nr_hugepages=8192    # 16 GB
+#vm.nr_hugepages=16384   # 32 GB     
+
+# Not needed for modern MySQL/Postgres if running as root or via systemd: 
+#vm.hugetlb_shm_group=27  # MySQL (typically GID 27)
+#vm.hugetlb_shm_group=26  # PostgreSQL (typically GID 26)
+
+# Safe default (HugePages disabled)
+vm.nr_hugepages=0
+EOF
+
 
         # Apply the file (does nothing harmful because it's 0): 
         sysctl -p "$MHP_SYSCTL_FILE" &>/dev/null
@@ -1026,6 +1091,7 @@ EOF
 
 # TO DO LIST: 
 #### Jemmaloc if needed
+#### SAR collection configuration for X mins 
 #### Available packages for installation (show commands for installation)
 
 
@@ -1057,7 +1123,6 @@ function main() {
         --fix)
             install_epel_repo
             install_missing_packages
-            check_system_updates
             ;;
         --system_report)
             check_system_config
