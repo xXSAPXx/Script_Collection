@@ -1103,7 +1103,7 @@ function sar_check() {
     # Check if timer is active || # Check specific interval configuration # We look for our custom override file
     IS_ACTIVE=$(systemctl is-active sysstat-collect.timer 2>/dev/null)
     SYSSTAT_CONFIG="/etc/sysconfig/sysstat"
-    SAR_COLLECTION_HISTORY=$(grep -E '^\s*HISTORY=' "$SYSSTAT_CONFIG" | cut -d'=' -f2 | tr -d '"')
+    SAR_COLLECTION_HISTORY=$(grep -E '^\s*HISTORY=' "$SYSSTAT_CONFIG" | awk -F'=' '{print $2}' | tr -d '"')
     OVERRIDE_FILE="/etc/systemd/system/sysstat-collect.timer.d/override.conf"
 
     if [[ "$IS_ACTIVE" == "active" ]]; then
@@ -1135,7 +1135,7 @@ function sar_config() {
     # VARIABLES: 
     IS_ACTIVE=$(systemctl is-active sysstat-collect.timer 2>/dev/null)
     SYSSTAT_CONFIG="/etc/sysconfig/sysstat"
-    SAR_COLLECTION_HISTORY=$(grep -E '^\s*HISTORY=' "$SYSSTAT_CONFIG" | cut -d'=' -f2 | tr -d '"')
+    SAR_COLLECTION_HISTORY=$(grep -E '^\s*HISTORY=' "$SYSSTAT_CONFIG" | awk -F'=' '{print $2}' | tr -d '"')
     OVERRIDE_DIR="/etc/systemd/system/sysstat-collect.timer.d"
     OVERRIDE_FILE="$OVERRIDE_DIR/override.conf"
 
@@ -1170,7 +1170,7 @@ EOF
         fi
     else
         echo
-        echo -e "❌  ${RED}SAR timer is NOT active. --> Check $ systemctl status sysstat-collect.timer]${RESET}"
+        echo -e "❌  ${RED}SAR timer is NOT active. [No Changes Made!]--> Check $ systemctl status sysstat-collect.timer${RESET}"
     fi
 }
 
