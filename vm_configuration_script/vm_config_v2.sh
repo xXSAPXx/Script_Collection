@@ -16,8 +16,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "fastfetch" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bat" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "dnf_automatic_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check" "udev_rules_check")
-func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "dnf_automatic_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config" "udev_rules_config")
+func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "dnf_automatic_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check" "udev_rules_check" "sar_check")
+func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "dnf_automatic_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config" "udev_rules_config" "sar_config")
 
 
 
@@ -1089,11 +1089,97 @@ EOF
 
 
 
+# Function to check SAR (sysstat) status and interval:
+function sar_check() {
+
+    # Check if sysstat is installed: 
+    if ! rpm -q sysstat &>/dev/null; then
+        echo
+        echo -e "❌  ${RED}Sysstat (SAR) is NOT installed.${RESET}"
+        return
+    fi
+
+    # VARIABLES: 
+    # Check if timer is active || # Check specific interval configuration # We look for our custom override file
+    IS_ACTIVE=$(systemctl is-active sysstat-collect.timer 2>/dev/null)
+    SYSSTAT_CONFIG="/etc/sysconfig/sysstat"
+    SAR_COLLECTION_HISTORY=$(grep -E '^\s*HISTORY=' "$SYSSTAT_CONFIG" | cut -d'=' -f2 | tr -d '"')
+    OVERRIDE_FILE="/etc/systemd/system/sysstat-collect.timer.d/override.conf"
+
+    if [[ "$IS_ACTIVE" == "active" ]]; then
+        if [[ -f "$OVERRIDE_FILE" ]] && grep -Fq "OnCalendar=*:00/1" "$OVERRIDE_FILE"; then
+            echo
+            echo -e "✅  ${GREEN}SAR is active and running every 1 minute with ${SAR_COLLECTION_HISTORY} days retention.${RESET}"
+        else
+            echo
+            echo -e "⛔  ${YELLOW}SAR is active but likely running on default (10min) interval with ${SAR_COLLECTION_HISTORY} days retention.${RESET}"
+        fi
+    else
+        echo
+        echo -e "❌  ${RED}SAR timer is NOT active.${RESET}"
+    fi
+}
+
+
+
+# Function to configure SAR (1 min interval and check retention period):
+function sar_config() {
+
+    # Check if sysstat is installed: 
+    if ! rpm -q sysstat &>/dev/null; then
+        echo
+        echo -e "❌  ${RED}Sysstat (SAR) is NOT installed.${RESET}"
+        return
+    fi
+
+    # VARIABLES: 
+    IS_ACTIVE=$(systemctl is-active sysstat-collect.timer 2>/dev/null)
+    SYSSTAT_CONFIG="/etc/sysconfig/sysstat"
+    SAR_COLLECTION_HISTORY=$(grep -E '^\s*HISTORY=' "$SYSSTAT_CONFIG" | cut -d'=' -f2 | tr -d '"')
+    OVERRIDE_DIR="/etc/systemd/system/sysstat-collect.timer.d"
+    OVERRIDE_FILE="$OVERRIDE_DIR/override.conf"
+
+    if [[ "$IS_ACTIVE" == "active" ]]; then
+        if [[ -f "$OVERRIDE_FILE" ]] && grep -Fq "OnCalendar=*:00/1" "$OVERRIDE_FILE"; then
+            echo
+            echo -e "✅  ${GREEN}SAR is already active and running every 1 minute with ${SAR_COLLECTION_HISTORY} days retention.${RESET}"
+        else
+            echo
+            echo -e "${YELLOW}Configuring SAR to run every 1 minute...${RESET}"
+            
+            # Create override directory if it doesn't exist: 
+            mkdir -p "$OVERRIDE_DIR"
+
+            # Important: The first 'OnCalendar=' (empty) clears the default 10min timer. || The second 'OnCalendar=*:00/1' sets the new 1min timer.
+            cat <<EOF > "$OVERRIDE_FILE"
+[Unit]
+Description=Run system activity accounting tool every 1 minute
+
+[Timer]
+OnCalendar=
+OnCalendar=*:00/1
+EOF
+
+            # Reload systemd to recognize the new file || Enable || Restart the service to apply the new config immediately
+            systemctl daemon-reload && systemctl enable --now sysstat-collect.timer &>/dev/null && systemctl restart sysstat-collect.timer
+            if [ $? -eq 0 ]; then 
+                echo -e "╰┈➤   ✅  ${GREEN}SAR timer configured to 1 minute successfully.${RESET}"
+            else
+                echo -e "╰┈➤   ❌  ${RED}Failed to configure SAR timer to 1 minute.${RESET}"
+            fi
+        fi
+    else
+        echo
+        echo -e "❌  ${RED}SAR timer is NOT active. --> Check $ systemctl status sysstat-collect.timer]${RESET}"
+    fi
+}
+
+
+
 # TO DO LIST: 
 #### Jemmaloc if needed
-#### SAR collection configuration for X mins 
 #### Available packages for installation (show commands for installation)
-
+#### Dnf atomatic update check starts again after reboot even if disabled! 
 
 
 
