@@ -604,7 +604,9 @@ installonly_limit=3
 install_weak_deps=True
 skip_if_unavailable=False
 
-metadata_timer_sync=3600
+# Metadata refresh for dnf (Automatic DNF timers disabled separately)
+metadata_timer_sync=0
+
 bandwidth=1M
 max_parallel_downloads=${CPU_COUNT}
 country=${LOCATION_CODE}
@@ -648,9 +650,10 @@ function dnf_automatic_config() {
         # 1. dnf-makecache.timer (Updates metadata in background - causes IO)
         # 2. dnf-automatic.timer (Installs updates automatically - dangerous for DBs)
 
-        # Stop and disable both timers:
+        # Stop / Disable and MASK both timers: 
         systemctl stop dnf-makecache.timer dnf-automatic.timer 2>/dev/null
         systemctl disable dnf-makecache.timer dnf-automatic.timer 2>/dev/null
+        systemctl mask dnf-makecache.timer dnf-automatic.timer 2>/dev/null
         
         # Verification: 
         if systemctl is-active dnf-makecache.timer >/dev/null || systemctl is-active dnf-automatic.timer >/dev/null; then
