@@ -1073,10 +1073,10 @@ function udev_rules_config() {
         # Create the Udev rules file with the specified settings:
         cat <<EOF > "$UDEV_RULE_FILE"
 # Custom IO Scheduler and Read-Ahead Config: (NOT for NVMe devices!)
-SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048"
+# SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048"
 
 # Added rule for (VMs) NVMe devices and ATTR{queue/add_random}="0"
-# SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]|nvme[0-9]*", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048", ATTR{queue/add_random}="0"
+SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]|nvme[0-9]*", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048", ATTR{queue/add_random}="0"
 EOF
 
         # Reload Udev rules immediately without rebooting: 
@@ -1179,11 +1179,45 @@ EOF
 
 
 
+# Function to check MySQL Service OS Limits:
+function mysql_limits_check() {
+
+    # VARIABLES:
+    SERVICE_NAME="mysqld"
+
+    if ! systemctl list-units --full -all | grep -q "$SERVICE_NAME.service"; then
+        echo
+        echo -e "❌  ${RED}No $SERVICE_NAME service found.${RESET}"
+        return
+    fi
+
+    # Check the Actual Limits applied to the process: 
+    CURRENT_NOFILE=$(systemctl show $SERVICE_NAME -p LimitNOFILE --value)       # Value for Open File Descriptors
+    CURRENT_MEMLOCK=$(systemctl show $SERVICE_NAME -p LimitMEMLOCK --value)     # Value for Memory Lock (HugePages)
+    CURRENT_NPROC=$(systemctl show $SERVICE_NAME -p LimitNPROC --value)         # Value for Number of Processes (Threads)
+
+    if \
+        [[ "$CURRENT_NOFILE" != "infinity" && "$CURRENT_NOFILE" -lt "40960" ]] || \
+        [[ "$CURRENT_NPROC"  != "infinity" && "$CURRENT_NPROC"  -lt "40960"  ]] || \
+        [[ "$CURRENT_MEMLOCK" != "infinity" ]]
+    then
+        echo
+        echo -e "❌  ${RED} $SERVICE_NAME OS limits are not set correctly.${RESET}"
+        return
+    else
+        echo
+        echo -e "✅  ${GREEN} $SERVICE_NAME OS limits are set correctly.${RESET}"
+    fi
+}
+
+
+
+
+
 # TO DO LIST: 
 #### Jemmaloc if needed
 #### Available packages for installation (show commands for installation)
-#### Dnf atomatic update check starts again after reboot even if disabled! 
-
+#### MySQL OS Limits 
 
 
 
