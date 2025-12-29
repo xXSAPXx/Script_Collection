@@ -16,8 +16,8 @@ RESET="\e[0m"
 package_list=("htop" "btop" "atop" "iotop" "sysstat" "fastfetch" "lsof" "curl" "wget" "bind-utils" "iproute" "iperf3" "telnet" "tcpdump" "traceroute" "vim-enhanced" "bat" "bash-completion" "git" "tmux" "python3-dnf-plugin-versionlock")
 
 # List of functions for system checks and system configurations to be performed:
-func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "dnf_automatic_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check" "udev_rules_check" "sar_check")
-func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "dnf_automatic_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config" "udev_rules_config" "sar_config")
+func_list_sys_checks=("bash_profile_check" "bash_history_check" "time_format_check" "swappiness_check" "dnf_check" "dnf_automatic_check" "selinux_check" "thp_mhp_check" "network_performance_check" "kernel_io_check" "vm_memory_check" "udev_rules_check" "sar_check" "mysql_limits_check")
+func_list_sys_config=("bash_profile_config" "bash_history_config" "time_format_config" "swappiness_config" "dnf_config" "dnf_automatic_config" "selinux_config" "thp_mhp_config" "network_performance_config" "kernel_io_config" "vm_memory_config" "udev_rules_config" "sar_config" "mysql_limits_config")
 
 
 
@@ -1185,7 +1185,7 @@ function mysql_limits_check() {
     # VARIABLES:
     SERVICE_NAME="mysqld"
 
-    if ! systemctl list-units --full -all | grep -q "$SERVICE_NAME.service"; then
+    if ! systemctl status "$SERVICE_NAME" &>/dev/null; then
         echo
         echo -e "❌  ${RED}No $SERVICE_NAME service found.${RESET}"
         return
@@ -1202,22 +1202,76 @@ function mysql_limits_check() {
         [[ "$CURRENT_MEMLOCK" != "infinity" ]]
     then
         echo
-        echo -e "❌  ${RED} $SERVICE_NAME OS limits are not set correctly.${RESET}"
+        echo -e "❌  ${RED}OS limits for $SERVICE_NAME are not set correctly.${RESET}"
         return
     else
         echo
-        echo -e "✅  ${GREEN} $SERVICE_NAME OS limits are set correctly.${RESET}"
+        echo -e "✅  ${GREEN}OS limits for $SERVICE_NAME are set correctly.${RESET}"
     fi
 }
 
 
+# Function to configure MySQL Service OS Limits:
+function mysql_limits_config() {
+    
+    # VARIABLES:
+    SERVICE_NAME="mysqld"
+    OVERRIDE_DIR="/etc/systemd/system/${SERVICE_NAME}.service.d"
+    OVERRIDE_FILE="$OVERRIDE_DIR/limits.conf"
 
+    if ! systemctl status "$SERVICE_NAME" &>/dev/null; then
+        echo
+        echo -e "❌  ${RED}No $SERVICE_NAME service found.${RESET}"
+        return
+    fi
+
+    # Check the Actual Limits applied to the process: 
+    CURRENT_NOFILE=$(systemctl show $SERVICE_NAME -p LimitNOFILE --value)       # Value for Open File Descriptors
+    CURRENT_MEMLOCK=$(systemctl show $SERVICE_NAME -p LimitMEMLOCK --value)     # Value for Memory Lock (HugePages)
+    CURRENT_NPROC=$(systemctl show $SERVICE_NAME -p LimitNPROC --value)         # Value for Number of Processes (Threads)
+
+    if \
+        [[ "$CURRENT_NOFILE" != "infinity" && "$CURRENT_NOFILE" -lt "40960" ]] || \
+        [[ "$CURRENT_NPROC"  != "infinity" && "$CURRENT_NPROC"  -lt "40960"  ]] || \
+        [[ "$CURRENT_MEMLOCK" != "infinity" ]]
+    then
+        echo
+        echo -e "${YELLOW}Configuring OS limits for $SERVICE_NAME...${RESET}"
+        
+        # Create the Systemd Override directory if it doesn't exist:
+        if [[ ! -d "$OVERRIDE_DIR" ]]; then
+            mkdir -p "$OVERRIDE_DIR"
+        fi
+        
+        # Create or overwrite the limits.conf file:
+        cat <<EOF > "$OVERRIDE_FILE"
+[Service]
+# Maximum open files (connections + tables)
+# Standard production value: 65535 or infinity
+LimitNOFILE=65535
+
+# Maximum processes (threads)
+LimitNPROC=65535
+
+# Allow locking memory (MANDATORY for HugePages)
+LimitMEMLOCK=infinity
+EOF
+    
+        # Reload Systemd to see the file
+        systemctl daemon-reload
+    
+        # Inform that a service restart is required for limits to take effect:
+        echo -e "╰┈➤   ⛔  ${YELLOW}A restart of the $SERVICE_NAME service is required for changes to take effect.${RESET}"
+    else
+        echo
+        echo -e "✅  ${GREEN}OS limits for $SERVICE_NAME are already set correctly.${RESET}"
+    fi
+}    
 
 
 # TO DO LIST: 
 #### Jemmaloc if needed
 #### Available packages for installation (show commands for installation)
-#### MySQL OS Limits 
 
 
 
