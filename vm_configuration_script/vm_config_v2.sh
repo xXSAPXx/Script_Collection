@@ -204,6 +204,9 @@ function check_epel_repo() {
 
 #  Function to install EPEL Repo
 function install_epel_repo() {
+
+    EPEL_VERSION=$(rpm -E %rhel)
+
     echo -e "_________________________________________________________________________________"
     echo
     echo -e "Checking Installed Repositories:"
@@ -214,13 +217,13 @@ function install_epel_repo() {
         return 0
     else
         echo -e "${YELLOW}Installing EPEL repository...${RESET}"
-        sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm &>/dev/null
+        sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-${EPEL_VERSION}.noarch.rpm &>/dev/null
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}EPEL repository successfully installed.${RESET}"
+            echo -e "${GREEN}EPEL repository version: ${EPEL_VERSION} successfully installed.${RESET}"
             echo
             return 0
         else
-            echo -e "${RED}Failed to install EPEL repository.${RESET}"
+            echo -e "${RED}Failed to install EPEL repository version: ${EPEL_VERSION}.${RESET}"
             echo
             return 1
         fi
@@ -1187,7 +1190,7 @@ function mysql_limits_check() {
 
     if ! systemctl status "$SERVICE_NAME" &>/dev/null; then
         echo
-        echo -e "❌  ${RED}No $SERVICE_NAME service found.${RESET}"
+        echo -e "❌  ${RED}(OS limits) No $SERVICE_NAME service found.${RESET}"
         return
     fi
 
@@ -1221,7 +1224,7 @@ function mysql_limits_config() {
 
     if ! systemctl status "$SERVICE_NAME" &>/dev/null; then
         echo
-        echo -e "❌  ${RED}No $SERVICE_NAME service found.${RESET}"
+        echo -e "❌  ${RED}(OS limits) No $SERVICE_NAME service found.${RESET}"
         return
     fi
 
