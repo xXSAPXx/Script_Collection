@@ -1216,8 +1216,8 @@ function mysql_limits_config() {
     
     # VARIABLES:
     SERVICE_NAME="mysqld"
-    OVERRIDE_DIR="/etc/systemd/system/${SERVICE_NAME}.service.d"
-    OVERRIDE_FILE="$OVERRIDE_DIR/limits.conf"
+    OVERRIDE_DIR="/etc/systemd/system/${SERVICE_NAME}.service.d"    # Directory for overrides - Must end in .d
+    OVERRIDE_FILE="$OVERRIDE_DIR/limits.conf"                       # Override file - Must end in *.conf
 
     if ! systemctl status "$SERVICE_NAME" &>/dev/null; then
         echo
