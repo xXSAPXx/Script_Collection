@@ -1048,7 +1048,7 @@ EOF
 # Function to check Udev rules:
 function udev_rules_check() {
 
-    UDEV_RULE_FILE="/etc/udev/rules.d/90-read-ahead.rules"
+    UDEV_RULE_FILE="/etc/udev/rules.d/90-udev.rules"
 
     if [[ -f "$UDEV_RULE_FILE" ]]; then
         echo
@@ -1064,7 +1064,7 @@ function udev_rules_check() {
 # Function to configure Udev rules:
 function udev_rules_config() {
 
-    UDEV_RULE_FILE="/etc/udev/rules.d/90-read-ahead.rules"
+    UDEV_RULE_FILE="/etc/udev/rules.d/90-udev.rules"
 
     if [[ -f "$UDEV_RULE_FILE" ]]; then
         echo
@@ -1075,11 +1075,8 @@ function udev_rules_config() {
         
         # Create the Udev rules file with the specified settings:
         cat <<EOF > "$UDEV_RULE_FILE"
-# Custom IO Scheduler and Read-Ahead Config: (NOT for NVMe devices!)
-# SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048"
-
-# Added rule for (VMs) NVMe devices and ATTR{queue/add_random}="0"
-SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]|nvme[0-9]*", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{bdi/read_ahead_kb}="4096", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048", ATTR{queue/add_random}="0"
+# Custom Udev Rules Config:
+SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]|nvme[0-9]*", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048", ATTR{queue/add_random}="0"
 EOF
 
         # Reload Udev rules immediately without rebooting: 
@@ -1273,7 +1270,10 @@ EOF
 
 
 # TO DO LIST: 
-#### UDEV Read-Ahead does not work! --> Needs testing on Rocky 9.7 --> blockdev settings may be better solution! 
+#### UDEV is gonna be used only to TAG the MySQL disk (ID_SERIAL_SHORT=="mysql") 
+# - rest of settings will be applied via systemctl/sysctl including read-ahead settings
+
+
 #### Jemmaloc if needed
 #### Available packages for installation (show commands for installation)
 
