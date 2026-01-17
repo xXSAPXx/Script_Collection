@@ -1045,52 +1045,101 @@ EOF
 
 
 
-# Function to check Udev rules:
+# Function to check Udev Tag rules:
 function udev_rules_check() {
 
-    UDEV_RULE_FILE="/etc/udev/rules.d/90-udev.rules"
+    UDEV_RULE_FILE="/etc/udev/rules.d/90-udev-tag.rules"
 
     if [[ -f "$UDEV_RULE_FILE" ]]; then
         echo
-        echo -e "✅  ${GREEN}Udev rules are already configured.${RESET}"
+        echo -e "✅  ${GREEN}Udev tag rules are already configured.${RESET}"
     else
         echo
-        echo -e "❌  ${RED}Udev rules are not configured.${RESET}"
+        echo -e "❌  ${RED}Udev tag rules are not configured.${RESET}"
     fi
 }
 
 
 
-# Function to configure Udev rules:
+# Function to configure Udev tuning rules:
 function udev_rules_config() {
 
-    UDEV_RULE_FILE="/etc/udev/rules.d/90-udev.rules"
+    UDEV_RULE_FILE="/etc/udev/rules.d/90-udev-tag.rules"
 
     if [[ -f "$UDEV_RULE_FILE" ]]; then
         echo
-        echo -e "✅  ${GREEN}Udev rules are already configured.${RESET}"
+        echo -e "✅  ${GREEN}Udev tag rules are already configured.${RESET}"
     else
         echo
-        echo -e "${YELLOW}Configuring Udev rules...${RESET}"
+        echo -e "${YELLOW}Configuring Udev tag rules and systemd service...${RESET}"
         
-        # Create the Udev rules file with the specified settings:
-        cat <<EOF > "$UDEV_RULE_FILE"
-# Custom Udev Rules Config:
-SUBSYSTEM=="block", ACTION=="add|change", KERNEL=="sd[a-z]|nvme[0-9]*", ENV{ID_SERIAL_SHORT}=="mysql", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/iosched/front_merges}="0", ATTR{queue/iosched/read_expire}="1000", ATTR{queue/iosched/write_expire}="1000", ATTR{queue/iosched/writes_starved}="1", ATTR{queue/rotational}="0", ATTR{queue/rq_affinity}="0", ATTR{queue/nr_requests}="2048", ATTR{queue/add_random}="0"
+        # Create the Udev tag rules file with the specified settings:
+        cat <<'EOF' > "$UDEV_RULE_FILE"
+# Custom Udev Tag for desired block devices:
+SUBSYSTEM=="block", KERNEL=="sd[a-z]|nvme[0-9]*", ENV{ID_SERIAL_SHORT}=="mysql", TAG+="mysql_disk"
 EOF
 
-        # Reload Udev rules immediately without rebooting: 
+        # Reload Udev rules immediately to tag the desired devices: 
         udevadm control --reload-rules && udevadm trigger
         
-        if [ $? -eq 0 ]; then
-             echo -e "╰┈➤   ✅  ${GREEN}Udev rules applied and triggered successfully.${RESET}"
+        # Create a systemd service to apply the desired udev rules for the tagged device on boot:
+        SYSTEMD_SERVICE_FILE="/etc/systemd/system/udev-disk-tuning.service"
+        cat <<'EOF' > "$SYSTEMD_SERVICE_FILE"
+[Unit]
+Description=Tune Desired Block Devices via UDEV Tag | for both (SD + NVME)
+After=systemd-udev-settle.service local-fs.target
+Requires=systemd-udev-settle.service
+Before=mysqld.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=20
+ExecStart=/bin/bash -c '\
+echo "[disk-tuning] Starting MySQL Disk Tuning"; \
+for device_path in /sys/block/sd[a-z] /sys/block/nvme[0-9]n[0-9]; do \
+  [ -e "$device_path" ] || continue; \
+  d=$(basename "$device_path"); \
+  device_name="/dev/$d"; \
+  if udevadm info --query=property --name="$device_name" | grep -q "^TAGS=.*mysql_disk"; then \
+    echo "[disk-tuning] Tuning device $device_name"; \
+    echo mq-deadline > "$device_path/queue/scheduler"; \
+    echo 0    > "$device_path/queue/iosched/front_merges"; \
+    echo 1000 > "$device_path/queue/iosched/read_expire"; \
+    echo 1000 > "$device_path/queue/iosched/write_expire"; \
+    echo 1    > "$device_path/queue/iosched/writes_starved"; \
+    echo 0    > "$device_path/queue/rotational"; \
+    echo 0    > "$device_path/queue/rq_affinity"; \
+    echo 0    > "$device_path/queue/add_random"; \
+    echo 2048 > "$device_path/queue/nr_requests"; \
+    /usr/sbin/blockdev --setra 8192 "$device_name"; \
+    echo "[disk-tuning] Finished tuning $device_name"; \
+  else \
+    echo "[disk-tuning] Skipping $device_name (mysql_disk tag not present)"; \
+  fi; \
+done; \
+echo "[disk-tuning] MySQL disk tuning completed"'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+        # Enable the systemd service to run at boot:
+        systemctl daemon-reload
+        systemctl enable udev-disk-tuning.service &>/dev/null
+
+        # Trigger the service immediately to apply the udev rules now:
+        systemctl start udev-disk-tuning.service &>/dev/null
+
+        # Check if the service started successfully:
+        if [ $? -eq 0 ]; then 
+            echo -e "╰┈➤   ✅  ${GREEN}Udev tag and systemd tune service configured successfully.${RESET}"
+            return
         else
-             echo -e "╰┈➤   ❌  ${RED}Failed to trigger Udev rules.${RESET}"
-        fi
-    fi
+            echo -e "╰┈➤   ❌  ${RED}Failed to configure Udev tag rules or systemd tune service.${RESET}"
+            return
+        fi    
+   fi
 }
-
-
 
 # Function to check SAR (sysstat) status and interval:
 function sar_check() {
@@ -1270,9 +1319,6 @@ EOF
 
 
 # TO DO LIST: 
-#### UDEV is gonna be used only to TAG the MySQL disk (ID_SERIAL_SHORT=="mysql") 
-# - rest of settings will be applied via systemctl/sysctl including read-ahead settings
-
 
 #### Jemmaloc if needed
 #### Available packages for installation (show commands for installation)
