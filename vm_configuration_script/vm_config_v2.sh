@@ -1087,14 +1087,15 @@ EOF
         cat <<'EOF' > "$SYSTEMD_SERVICE_FILE"
 [Unit]
 Description=Tune Desired Block Devices via UDEV Tag | for both (SD + NVME)
-After=systemd-udev-settle.service local-fs.target
-Requires=systemd-udev-settle.service
+After=multi-user.target
+Wants=multi-user.target
 Before=mysqld.service
 
 [Service]
 Type=oneshot
-TimeoutStartSec=20
 ExecStart=/bin/bash -c '\
+set -euo pipefail; \
+sleep 30; \
 echo "[disk-tuning] Starting MySQL Disk Tuning"; \
 for device_path in /sys/block/sd[a-z] /sys/block/nvme[0-9]n[0-9]; do \
   [ -e "$device_path" ] || continue; \
@@ -1102,15 +1103,10 @@ for device_path in /sys/block/sd[a-z] /sys/block/nvme[0-9]n[0-9]; do \
   device_name="/dev/$d"; \
   if udevadm info --query=property --name="$device_name" | grep -q "^TAGS=.*mysql_disk"; then \
     echo "[disk-tuning] Tuning device $device_name"; \
-    echo mq-deadline > "$device_path/queue/scheduler"; \
-    echo 0    > "$device_path/queue/iosched/front_merges"; \
-    echo 1000 > "$device_path/queue/iosched/read_expire"; \
-    echo 1000 > "$device_path/queue/iosched/write_expire"; \
-    echo 1    > "$device_path/queue/iosched/writes_starved"; \
     echo 0    > "$device_path/queue/rotational"; \
     echo 0    > "$device_path/queue/rq_affinity"; \
     echo 0    > "$device_path/queue/add_random"; \
-    echo 2048 > "$device_path/queue/nr_requests"; \
+	echo mq-deadline > "$device_path/queue/scheduler"; \
     /usr/sbin/blockdev --setra 8192 "$device_name"; \
     echo "[disk-tuning] Finished tuning $device_name"; \
   else \
@@ -1122,7 +1118,6 @@ echo "[disk-tuning] MySQL disk tuning completed"'
 [Install]
 WantedBy=multi-user.target
 EOF
-
         # Enable the systemd service to run at boot:
         systemctl daemon-reload
         systemctl enable udev-disk-tuning.service &>/dev/null
