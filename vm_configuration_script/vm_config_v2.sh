@@ -1017,27 +1017,23 @@ function vm_memory_config() {
     cat <<EOF > "$VM_SYSCTL_FILE"
 # -------------------------------------------------------------------
 # VM Memory Reserve (calculated dynamically)
-# Approximately 1% of total RAM, clamped between 32MB and 512MB
+# Approximately 1% of total RAM, clamped between 32MB and 1GB
 # -------------------------------------------------------------------
 vm.min_free_kbytes = $MIN_FREE_KB
 
 # -------------------------------------------------------------------
-# Dirty Memory Settings (DB-friendly, smoother writeback)
+# Dirty Memory Settings -- Commented out for performance! (See Comments Below:)
 # -------------------------------------------------------------------
 
-# Start background writeback when 128MB is dirty
-vm.dirty_background_bytes = 134217728
+# Perentage of system memory that can be "dirty" before writeback starts: (If we use Direct IO this can cause stalls!!) 
+#vm.dirty_background_ratio = 5
 
-# Block new writes when 256MB is dirty
-vm.dirty_bytes = 268435456
+# Percentage of system memory that can be "dirty" before processes are forced to write dirty data to disk: (If we use Direct IO this can cause stalls!!) 
 
-# Expire dirty pages quickly to avoid I/O bursts
-vm.dirty_expire_centisecs = 500
-vm.dirty_writeback_centisecs = 100
 EOF
 
     if sysctl -p "$VM_SYSCTL_FILE" >/dev/null 2>&1; then
-        echo -e "╰┈➤   ✅  ${GREEN}VM Memory settings applied successfully.${RESET}"
+        echo -e "╰┈➤   ✅  ${GREEN}VM Memory settings applied successfully. (Dirty Ratio settings commented out!)${RESET}"
     else
         echo -e "╰┈➤   ❌  ${RED}Failed to apply VM Memory settings.${RESET}"
     fi
