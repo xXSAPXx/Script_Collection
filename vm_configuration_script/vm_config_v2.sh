@@ -1312,6 +1312,7 @@ EOF
 # TO DO LIST: 
 
 #### Jemmaloc if needed
+#### NUMA Control check and maybe config --- Research more!
 #### Available packages for installation (show commands for installation)
 
 
