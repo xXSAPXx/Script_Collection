@@ -117,7 +117,28 @@ EOF
 # Function for Xtrabackup Backup:
 xtrabackup_backup() {
     if command -v xtrabackup >/dev/null 2>&1; then
+        local LOCK_NAME="backup_running"
+        local LOCK_TIMEOUT=0 # 0 = fail immediately if already locked
+        
+        echo -e "${YELLOW}Attempting to acquire database lock named: ${LOCK_NAME}...${RESET}"
 
+        # Start a background process to hold the lock | First, grab the lock. Then, wait indefinitely (read) until the pipe closes: 
+        exec 3> >(mysql --login-path=local -N)
+        echo "SELECT GET_LOCK('${LOCK_NAME}', ${LOCK_TIMEOUT});" >&3
+
+        # Verify we actually got the lock | We check if a session with this lock exists:
+        local IS_LOCKED=$(mysql --login-path=local -N -e "SELECT IS_USED_LOCK('${LOCK_NAME}');")
+        
+        if [ "$IS_LOCKED" == "NULL" ] || [ -z "$IS_LOCKED" ]; then
+            echo -e "${RED}Error: Could not acquire lock. Is another backup running?${RESET}"
+            exec 3>&- # Close the file descriptor / mysql connection
+            return 1
+        fi
+
+        # Setup Trap for safety | If the script exits or is killed, close the file descriptor to release the lock:
+        trap 'exec 3>&-; echo -e "${RED}Lock released by trap.${RESET}"' EXIT INT TERM
+
+        echo -e "${GREEN}Lock acquired successfully.${RESET}"
         echo -e "${YELLOW}Starting XtraBackup at ${CURRENT_TIME} ${RESET}"
 
         # Start time of the backup script:
@@ -133,6 +154,11 @@ xtrabackup_backup() {
 
         # Save Backup Exit Code:
         XTRABACKUP_EXIT_CODE=$?
+
+        # Cleanup file descriptor and release lock: 
+        exec 3>&-               # Closing the file descriptor kills the MySQL session and releases the lock
+        trap - EXIT INT TERM    # Clear the trap
+
         if [ $XTRABACKUP_EXIT_CODE -ne 0 ]; then
             echo -e "${RED}XtraBackup failed.${RESET}"
             return 1
