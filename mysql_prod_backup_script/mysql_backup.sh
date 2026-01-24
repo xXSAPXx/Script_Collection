@@ -117,28 +117,29 @@ EOF
 # Function for Xtrabackup Backup:
 xtrabackup_backup() {
     if command -v xtrabackup >/dev/null 2>&1; then
-        local LOCK_NAME="backup_running"
-        local LOCK_TIMEOUT=0 # 0 = fail immediately if already locked
-        
-        echo -e "${YELLOW}Attempting to acquire database lock named: ${LOCK_NAME}...${RESET}"
+        local BACKUP_LOCK_NAME="backup_running"
+
+        echo -e "${YELLOW}-- Attempting to acquire database lock named: ${BACKUP_LOCK_NAME} --${RESET}"
 
         # Start a background process to hold the lock | First, grab the lock. Then, wait indefinitely (read) until the pipe closes: 
         exec 3> >(mysql --login-path=local -N)
-        echo "SELECT GET_LOCK('${LOCK_NAME}', ${LOCK_TIMEOUT});" >&3
 
-        # Verify we actually got the lock | We check if a session with this lock exists:
-        local IS_LOCKED=$(mysql --login-path=local -N -e "SELECT IS_USED_LOCK('${LOCK_NAME}');")
+        # Verify the lock is not used ATM | We check if a session with this lock exists:
+        local BACKUP_LOCK_STATUS=$(mysql --login-path=local -N -e "SELECT IS_FREE_LOCK('${BACKUP_LOCK_NAME}');")
         
-        if [ "$IS_LOCKED" == "NULL" ] || [ -z "$IS_LOCKED" ]; then
-            echo -e "${RED}Error: Could not acquire lock. Is another backup running?${RESET}"
+        if [ "$BACKUP_LOCK_STATUS" == '0' ] || [ -z "$BACKUP_LOCK_STATUS" ]; then
+            echo -e "${RED}-- Error: Could not acquire lock. Is another backup running? --${RESET}"
             exec 3>&- # Close the file descriptor / mysql connection
             return 1
         fi
 
-        # Setup Trap for safety | If the script exits or is killed, close the file descriptor to release the lock:
-        trap 'exec 3>&-; echo -e "${RED}Lock released by trap.${RESET}"' EXIT INT TERM
+        # Request / GET the lock:
+        echo "SELECT GET_LOCK('${BACKUP_LOCK_NAME}',0);" >&3
 
-        echo -e "${GREEN}Lock acquired successfully.${RESET}"
+        # Setup Trap for safety | If the script exits / is inteerupted / or is killed, close the file descriptor to release the lock:
+        trap 'exec 3>&-; echo -e "${RED}-- Lock released by trap. --${RESET}"' EXIT INT TERM
+
+        echo -e "${GREEN}-- Lock acquired successfully. --${RESET}"
         echo -e "${YELLOW}Starting XtraBackup at ${CURRENT_TIME} ${RESET}"
 
         # Start time of the backup script:
