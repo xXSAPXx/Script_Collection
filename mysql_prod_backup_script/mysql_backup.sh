@@ -156,9 +156,10 @@ xtrabackup_backup() {
         # Save Backup Exit Code:
         XTRABACKUP_EXIT_CODE=$?
 
-        # Cleanup file descriptor and release lock: 
-        exec 3>&-               # Closing the file descriptor kills the MySQL session and releases the lock
-        trap - EXIT INT TERM    # Clear the trap
+		# Cleanup file descriptor and release lock
+		exec 3>&- && \				# Closing the file descriptor kills the MySQL session and releases the lock
+		trap - EXIT INT TERM && \	# Clear the trap
+		echo -e "${YELLOW}-- Lock named ${BACKUP_LOCK_NAME} has been released and trap removed. --${RESET}"
 
         if [ $XTRABACKUP_EXIT_CODE -ne 0 ]; then
             echo -e "${RED}XtraBackup failed.${RESET}"
