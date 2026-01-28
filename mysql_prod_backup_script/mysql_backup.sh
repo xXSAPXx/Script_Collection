@@ -132,10 +132,13 @@ xtrabackup_backup() {
             exec 3>&- # Close the file descriptor / mysql connection
             return 1
         fi
-
+		# 1. Bump the timeouts for THIS SESSION ONLY (12 hours = 43200 seconds)
+		echo "SET SESSION wait_timeout=43200;" >&3
+		echo "SET SESSION interactive_timeout=43200;" >&3
+		
         # Request / GET the lock:
         echo "SELECT GET_LOCK('${BACKUP_LOCK_NAME}',0);" >&3
-
+		
         # Setup Trap for safety | If the script exits / is inteerupted / or is killed, close the file descriptor to release the lock:
         trap 'exec 3>&-; echo -e "${RED}-- Lock released by trap. --${RESET}"' EXIT INT TERM
 
