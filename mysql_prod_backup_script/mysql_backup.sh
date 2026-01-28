@@ -132,6 +132,7 @@ xtrabackup_backup() {
             exec 3>&- # Close the file descriptor / mysql connection
             return 1
         fi
+		
 		# 1. Bump the timeouts for THIS SESSION ONLY (12 hours = 43200 seconds)
 		echo "SET SESSION wait_timeout=43200;" >&3
 		echo "SET SESSION interactive_timeout=43200;" >&3
