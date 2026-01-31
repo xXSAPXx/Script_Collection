@@ -4,9 +4,11 @@ set -uo pipefail
  
 # Main script for exporting LOGICAL and PHYSICAL production DB backups. (Version 2)
 # 1) Uses Percona (MySQL Shell) or Percona (Xtrabackup) to make a full instance backup.
-# 2) Transfers the backup to specific GCP Bucket.
-# 3) Updates node_exporter text collector files for Grafana backup monitoring in case of SUCCESS or FAILURE.
-# 4) Backups can be performed LOCALLY by both utilities if needed. 
+# 2) Aqquires a named lock to prevent concurrent backups / DDL operations during backup. 
+# 3) Releases the lock upon backup completion / failure / interuption.
+# 4) Transfers the backup to specific GCP Bucket.
+# 5) Updates node_exporter text collector files for Grafana backup monitoring in case of SUCCESS or FAILURE.
+# 6) Backups can be performed LOCALLY by both utilities if needed. 
 
 
 # Colors for output:
@@ -67,7 +69,33 @@ mysql_shell_backup(){
 
     command -v mysqlsh >/dev/null 2>&1
     if [ $? -eq 0 ]; then
+        local BACKUP_LOCK_NAME="backup_running"
 
+        echo -e "${YELLOW}-- Attempting to acquire database lock named: ${BACKUP_LOCK_NAME} --${RESET}"
+
+        # Start a background process to hold the lock | First, grab the lock. Then, wait indefinitely (read) until the pipe closes: 
+        exec 3> >(mysql --login-path=local -N)
+
+        # Verify the lock is not used ATM | We check if a session with this lock exists:
+        local BACKUP_LOCK_STATUS=$(mysql --login-path=local -N -e "SELECT IS_FREE_LOCK('${BACKUP_LOCK_NAME}');")
+        
+        if [ "$BACKUP_LOCK_STATUS" == '0' ] || [ -z "$BACKUP_LOCK_STATUS" ]; then
+            echo -e "${RED}-- Error: Could not acquire lock. Is another backup running? --${RESET}"
+            exec 3>&- # Close the file descriptor / mysql connection
+            return 1
+        fi
+		
+		# 1. Bump the timeouts for THIS SESSION ONLY (12 hours = 43200 seconds)
+		echo "SET SESSION wait_timeout=43200;" >&3
+		echo "SET SESSION interactive_timeout=43200;" >&3
+		
+        # Request / GET the lock:
+        echo "SELECT GET_LOCK('${BACKUP_LOCK_NAME}',0);" >&3
+		
+        # Setup Trap for safety | If the script exits / is interupted / or is killed, close the file descriptor to release the lock:
+        trap 'exec 3>&-; echo -e "${RED}-- Lock released by trap. --${RESET}"' EXIT INT TERM
+
+        echo -e "${GREEN}-- Lock acquired successfully. --${RESET}"
         echo -e "${YELLOW}Starting MySQL Shell Backup at ${CURRENT_TIME} ${RESET}"
 
 		# Start time of the backup script:
@@ -82,6 +110,12 @@ mysql_shell_backup(){
 EOF
         # Save Backup Exit Code: 
         MYSQL_SHELL_EXIT_CODE=$?
+
+        # Cleanup file descriptor and release lock / Closing the file descriptor kills the MySQL session and releases the lock / Clear the trap
+		exec 3>&- && \
+		trap - EXIT INT TERM && \
+		echo -e "${YELLOW}-- Lock named ${BACKUP_LOCK_NAME} has been released and trap removed. --${RESET}"
+
         if [ $MYSQL_SHELL_EXIT_CODE -ne 0 ]; then
             echo -e "${RED}MySQL Shell Backup Failed!${RESET}"
             return 1
@@ -140,7 +174,7 @@ xtrabackup_backup() {
         # Request / GET the lock:
         echo "SELECT GET_LOCK('${BACKUP_LOCK_NAME}',0);" >&3
 		
-        # Setup Trap for safety | If the script exits / is inteerupted / or is killed, close the file descriptor to release the lock:
+        # Setup Trap for safety | If the script exits / is interupted / or is killed, close the file descriptor to release the lock:
         trap 'exec 3>&-; echo -e "${RED}-- Lock released by trap. --${RESET}"' EXIT INT TERM
 
         echo -e "${GREEN}-- Lock acquired successfully. --${RESET}"
