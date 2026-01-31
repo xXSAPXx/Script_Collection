@@ -1083,7 +1083,7 @@ EOF
         cat <<'EOF' > "$SYSTEMD_SERVICE_FILE"
 [Unit]
 Description=Tune Desired Block Devices via UDEV Tag | for both (SD + NVME)
-After=multi-user.target
+After=local-fs.target systemd-udev-trigger.service
 
 [Service]
 Type=oneshot
