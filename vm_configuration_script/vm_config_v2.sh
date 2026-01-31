@@ -1084,8 +1084,6 @@ EOF
 [Unit]
 Description=Tune Desired Block Devices via UDEV Tag | for both (SD + NVME)
 After=multi-user.target
-Wants=multi-user.target
-Before=mysqld.service
 
 [Service]
 Type=oneshot
