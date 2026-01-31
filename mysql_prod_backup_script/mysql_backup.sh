@@ -132,10 +132,14 @@ xtrabackup_backup() {
             exec 3>&- # Close the file descriptor / mysql connection
             return 1
         fi
-
+		
+		# 1. Bump the timeouts for THIS SESSION ONLY (12 hours = 43200 seconds)
+		echo "SET SESSION wait_timeout=43200;" >&3
+		echo "SET SESSION interactive_timeout=43200;" >&3
+		
         # Request / GET the lock:
         echo "SELECT GET_LOCK('${BACKUP_LOCK_NAME}',0);" >&3
-
+		
         # Setup Trap for safety | If the script exits / is inteerupted / or is killed, close the file descriptor to release the lock:
         trap 'exec 3>&-; echo -e "${RED}-- Lock released by trap. --${RESET}"' EXIT INT TERM
 
@@ -156,9 +160,10 @@ xtrabackup_backup() {
         # Save Backup Exit Code:
         XTRABACKUP_EXIT_CODE=$?
 
-        # Cleanup file descriptor and release lock: 
-        exec 3>&-               # Closing the file descriptor kills the MySQL session and releases the lock
-        trap - EXIT INT TERM    # Clear the trap
+		# Cleanup file descriptor and release lock / Closing the file descriptor kills the MySQL session and releases the lock / Clear the trap
+		exec 3>&- && \
+		trap - EXIT INT TERM && \
+		echo -e "${YELLOW}-- Lock named ${BACKUP_LOCK_NAME} has been released and trap removed. --${RESET}"
 
         if [ $XTRABACKUP_EXIT_CODE -ne 0 ]; then
             echo -e "${RED}XtraBackup failed.${RESET}"
