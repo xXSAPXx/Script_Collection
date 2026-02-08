@@ -40,9 +40,10 @@ start_time_final = time.time()              # Start time of the Script
 lock = threading.Lock()                     # Lock Multithreading
 COLUMNS_CHECKED = 0
 WARNINGS_FOUND = []                         # List to store data for the final table
+TOTAL_COLUMNS_EXTRACTED = 0 # Defined globally for thread access
 
-def log_message(message, to_warning_list=None):
-    """Helper to print to console and append to the full log file."""
+def log_message(message):
+    """Prints to console and appends to the full log file."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     formatted_msg = f"[{timestamp}] {message}"
     
@@ -50,10 +51,10 @@ def log_message(message, to_warning_list=None):
         print(message)
         with open(FULL_LOG_FILE, "a") as f:
             f.write(formatted_msg + "\n")
-        if to_warning_list:
-            WARNINGS_FOUND.append(to_warning_list)
 
 def connect_and_fetch_columns():
+    
+    global TOTAL_COLUMNS_EXTRACTED
 
     # Parse the MySQL mysql_config_editor --login-path
     try:
@@ -96,9 +97,9 @@ def connect_and_fetch_columns():
         cursor = connection.cursor()
         cursor.execute(CHECK_COLUMNS_QUERY)
         results = cursor.fetchall()
-        total = len(results)
-        log_message(f"Total integer columns extracted from schema '{DATABASE_TO_CHECK}': {total}")
-        return results, total, connection, conf
+        TOTAL_COLUMNS_EXTRACTED = len(results)
+        log_message(f"Total integer columns extracted: {TOTAL_COLUMNS_EXTRACTED}")
+        return results, connection, conf
     except Exception as e:
         log_message(f"Error during fetching columns: {e}")
         sys.exit(1)
@@ -115,6 +116,7 @@ def check_column_max(args_conf):
         conn = MySQLdb.connect(**conf, database=DATABASE_TO_CHECK)
         cursor = conn.cursor()
 
+        # Using backticks for all identifiers to prevent SQL errors on reserved words
         MAX_VALUE_QUERY = f"SELECT MAX(`{column_name}`), ROUND((MAX(`{column_name}`)/{max_value})*100, 2) FROM `{DATABASE_TO_CHECK}`.`{table_name}`;"
 
         # Execute this block with multiple threads: 
@@ -126,8 +128,11 @@ def check_column_max(args_conf):
         # Check if ratio is above the warning threshold and log accordingly:
         with lock:
             COLUMNS_CHECKED += 1
-            progress = f"[{COLUMNS_CHECKED:>{len(str(TOTAL_COLUMNS_EXTRACTED))}}/{TOTAL_COLUMNS_EXTRACTED}]"
+            # Pre-calculating padding for clean progress display
+            padding = len(str(TOTAL_COLUMNS_EXTRACTED))
+            progress = f"[{COLUMNS_CHECKED:>{padding}}/{TOTAL_COLUMNS_EXTRACTED}]"
             
+            # If table is empty, ratio is None
             if ratio is not None and ratio >= WARNING_THRESHOLD:
                 msg = (f"{progress} 🚩 WARNING: '{table_name}'.'{column_name}' is {ratio}% full!\n"
                        f"    Type: {column_type} | Max: {max_value} | Current: {current_value} | Time: {elapsed:.2f}s")
@@ -147,9 +152,11 @@ def check_column_max(args_conf):
 
 # ==================== MAIN EXECUTION =================== 
 
-# Connect to MySQL, fetch columns, and start multithreaded checking:
+# Initialize to avoid UnboundLocalError in finally block
+connection = None
+
 try:
-    results, TOTAL_COLUMNS_EXTRACTED, connection, conf = connect_and_fetch_columns()
+    results, connection, conf = connect_and_fetch_columns()
     
     # Initialize the log file with a header
     with open(FULL_LOG_FILE, "a") as f:
@@ -169,24 +176,22 @@ finally:
     if WARNINGS_FOUND:
         with open(WARNING_REPORT_FILE, "w") as wf:
             wf.write(f"CRITICAL COLUMN FILL RATIO REPORT - {DATABASE_TO_CHECK}\n")
-            wf.write(f"Generated on: {datetime.now()}\n")
-            wf.write(f"Threshold: > {WARNING_THRESHOLD}%\n\n")
+            wf.write(f"Generated: {datetime.now()} | Threshold: > {WARNING_THRESHOLD}%\n\n")
             
-            # Table Header
             header = f"{'Table':<30} | {'Column':<25} | {'Type':<15} | {'Current Val':<15} | {'Ratio':<8}"
-            wf.write(header + "\n")
-            wf.write("-" * len(header) + "\n")
+            wf.write(header + "\n" + "-" * len(header) + "\n")
             
-            # Table Rows (Sorted by Ratio descending)
+            # (Table Rows) Sort by ratio descending
             WARNINGS_FOUND.sort(key=lambda x: x[4], reverse=True)
             for row in WARNINGS_FOUND:
-                line = f"{row[0]:<30} | {row[1]:<25} | {row[2]:<15} | {row[3]:<15} | {row[4]:>6}%"
-                wf.write(line + "\n")
+                wf.write(f"{row[0]:<30} | {row[1]:<25} | {row[2]:<15} | {row[3]:<15} | {row[4]:>6}%\n")
         
-        print(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded the threshold. See '{WARNING_REPORT_FILE}' for the table report.")
+        print(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded threshold. See '{WARNING_REPORT_FILE}'")
     else:
-        # Clear the warning file if no issues found
+        # Clear the warning file if no issues found to avoid reading old data
         with open(WARNING_REPORT_FILE, "w") as wf:
-            wf.write("No columns exceeded the warning threshold.")
-
-    connection.close()
+            wf.write(f"Scan completed at {datetime.now()}\n")
+            wf.write("No columns exceeded the warning threshold. All systems nominal.")
+            
+    if connection:
+        connection.close()
