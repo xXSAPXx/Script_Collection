@@ -22,7 +22,7 @@ import MySQLdb
 import time
 import concurrent.futures
 import threading
-
+from datetime import datetime
 
 # Configurable Variables: 
 LOGIN_PATH='local'
@@ -31,14 +31,28 @@ TABLE_TO_CHECK=''                           # Set optional table for check (leav
 WARNING_THRESHOLD=70.0                      # Warn if column is more than 70% full
 NUMBER_OF_THREADS=5                         # Set number of threads for column checking (Number of MySQL connections)
 
+# Log File Names:
+FULL_LOG_FILE = "mysql_scan_full.log"
+WARNING_REPORT_FILE = "mysql_scan_warnings.txt"
 
 # Hardcoded Variables: 
 start_time_final = time.time()              # Start time of the Script
-lock = threading.Lock()                     # Lock Multithreading 
-COLUMNS_CHECKED=0
+lock = threading.Lock()                     # Lock Multithreading
+COLUMNS_CHECKED = 0
+WARNINGS_FOUND = []                         # List to store data for the final table
 
+def log_message(message, to_warning_list=None):
+    """Helper to print to console and append to the full log file."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    formatted_msg = f"[{timestamp}] {message}"
+    
+    with lock:
+        print(message)
+        with open(FULL_LOG_FILE, "a") as f:
+            f.write(formatted_msg + "\n")
+        if to_warning_list:
+            WARNINGS_FOUND.append(to_warning_list)
 
-# ===== Function to connect to DB and extract all columns =====
 def connect_and_fetch_columns():
 
     # Parse the MySQL mysql_config_editor --login-path
@@ -52,17 +66,13 @@ def connect_and_fetch_columns():
     # Connect to database:
     try:
         connection = MySQLdb.connect(**conf, database=(DATABASE_TO_CHECK))
-        print("\nConnected successfully to MySQL")
-
+        log_message("Connected successfully to MySQL")
     except Exception as e:
-        print(f"Error connecting to MySQL: {e}")
+        log_message(f"Error connecting to MySQL: {e}")
         sys.exit(1)
 
-
     # Build additional WHERE if table specified:
-    TABLE_EXTRA_SQL = ""
-    if TABLE_TO_CHECK:
-        TABLE_EXTRA_SQL = f"AND TABLE_NAME = '{TABLE_TO_CHECK}'"
+    TABLE_EXTRA_SQL = f"AND TABLE_NAME = '{TABLE_TO_CHECK}'" if TABLE_TO_CHECK else ""
 
     # Define query to check all tables for all INT data types:
     CHECK_COLUMNS_QUERY = f"""
@@ -86,17 +96,12 @@ def connect_and_fetch_columns():
         cursor = connection.cursor()
         cursor.execute(CHECK_COLUMNS_QUERY)
         results = cursor.fetchall()
-
-        TOTAL_COLUMNS_EXTRACTED = len(results)
-        print(f"\nTotal integer columns extracted from schema '{DATABASE_TO_CHECK}': {TOTAL_COLUMNS_EXTRACTED}")
-        print("Checking columns...\n")
-        return results, TOTAL_COLUMNS_EXTRACTED, connection, conf
-
-    # Handle errors: 
+        total = len(results)
+        log_message(f"Total integer columns extracted from schema '{DATABASE_TO_CHECK}': {total}")
+        return results, total, connection, conf
     except Exception as e:
-        print(f"Error during fetching columns: {e}")
+        log_message(f"Error during fetching columns: {e}")
         sys.exit(1)
-
 
 
 # ===== Fucntion to muntithread column MAX VALUE Scan: =====
@@ -110,65 +115,78 @@ def check_column_max(args_conf):
         conn = MySQLdb.connect(**conf, database=DATABASE_TO_CHECK)
         cursor = conn.cursor()
 
-        # Define query to find MAX(column_value) and ratio: 
-        MAX_VALUE_QUERY = f"""
-        SELECT 
-            MAX(`{column_name}`), 
-            ROUND((MAX(`{column_name}`)/{max_value})*100, 2) AS ratio
-        FROM `{DATABASE_TO_CHECK}`.`{table_name}`;
-        """
+        MAX_VALUE_QUERY = f"SELECT MAX(`{column_name}`), ROUND((MAX(`{column_name}`)/{max_value})*100, 2) FROM `{DATABASE_TO_CHECK}`.`{table_name}`;"
 
         # Execute this block with multiple threads: 
         start_time = time.time()
         cursor.execute(MAX_VALUE_QUERY)
-        result = cursor.fetchone()
+        current_value, ratio = cursor.fetchone()
         elapsed = time.time() - start_time
 
-        # Fetch only max value and calculated column fill ration: 
-        current_value, ratio = result
-
-
-        # Check the value against the defined WARNING_THRESHOLD: 
-        # Lock multithreading for checks: 
+        # Check if ratio is above the warning threshold and log accordingly:
         with lock:
             COLUMNS_CHECKED += 1
+            progress = f"[{COLUMNS_CHECKED:>{len(str(TOTAL_COLUMNS_EXTRACTED))}}/{TOTAL_COLUMNS_EXTRACTED}]"
+            
             if ratio is not None and ratio >= WARNING_THRESHOLD:
-                print(f"[{COLUMNS_CHECKED :>{len(str(TOTAL_COLUMNS_EXTRACTED))}}/{TOTAL_COLUMNS_EXTRACTED}] Checked '{table_name}'.'{column_name}' - Type: '{column_type}'")
-                print(f"  Column Max: {max_value}")
-                print(f"  Current Value: {current_value}")
-                print(f"  Time taken: {elapsed:.2f} sec")
-                print(f"  Fill Ratio: {ratio:.2f}% 🚩")
-                print("-" * 50)
+                msg = (f"{progress} 🚩 WARNING: '{table_name}'.'{column_name}' is {ratio}% full!\n"
+                       f"    Type: {column_type} | Max: {max_value} | Current: {current_value} | Time: {elapsed:.2f}s")
+                
+                # Store data for the table report
+                WARNINGS_FOUND.append([table_name, column_name, column_type, current_value, ratio])
             else:
-                 print(f"[{COLUMNS_CHECKED :>{len(str(TOTAL_COLUMNS_EXTRACTED))}}/{TOTAL_COLUMNS_EXTRACTED}] Checked '{table_name}'.'{column_name}'... OK ({elapsed:.2f} sec)")
-        
-        # Close thread connection
+                msg = f"{progress} Checked '{table_name}'.'{column_name}'... OK ({elapsed:.2f}s)"
+            
+        # Write to console and full log
+        log_message(msg)
         conn.close()
 
     # Handle errors: 
     except Exception as e:
-        elapsed = time.time() - start_time
-        # Lock multithreading for print: 
-        with lock:
-            print(f"FAILED after {elapsed:.2f} sec: {e}")
-            print("SQL: ", MAX_VALUE_QUERY)
+        log_message(f"FAILED: {table_name}.{column_name}: {e}")
 
+# ==================== MAIN EXECUTION =================== 
 
-
-# ==================== MAIN SCRIPT EXECUTION ===================  
-
-# Call func CONNECT_AND_FETCH_COLUMNS and pass variables to CHECK_COLUMN_MAX func with multiple threads: 
+# Connect to MySQL, fetch columns, and start multithreaded checking:
 try:
     results, TOTAL_COLUMNS_EXTRACTED, connection, conf = connect_and_fetch_columns()
+    
+    # Initialize the log file with a header
+    with open(FULL_LOG_FILE, "a") as f:
+        f.write(f"\n--- Starting Scan: {datetime.now()} ---\n")
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=NUMBER_OF_THREADS) as executor:
         executor.map(check_column_max, [(r, conf) for r in results])
 
 except Exception as e:
-    print(f"Error during processing: {e}")
-    sys.exit(1)
-
-# Print the full lenght of the script running and close main connection: 
+    log_message(f"Error during processing: {e}")
 finally:
     elapsed_final = time.time() - start_time_final
-    print(f"\nFinished checking. {COLUMNS_CHECKED} out of {TOTAL_COLUMNS_EXTRACTED} columns were successfully evaluated. For {elapsed_final:.2f} sec")
+    summary = f"\nFinished checking. {COLUMNS_CHECKED}/{TOTAL_COLUMNS_EXTRACTED} columns evaluated in {elapsed_final:.2f} sec."
+    log_message(summary)
+    
+    # --- GENERATE THE WARNING TABLE REPORT ---
+    if WARNINGS_FOUND:
+        with open(WARNING_REPORT_FILE, "w") as wf:
+            wf.write(f"CRITICAL COLUMN FILL RATIO REPORT - {DATABASE_TO_CHECK}\n")
+            wf.write(f"Generated on: {datetime.now()}\n")
+            wf.write(f"Threshold: > {WARNING_THRESHOLD}%\n\n")
+            
+            # Table Header
+            header = f"{'Table':<30} | {'Column':<25} | {'Type':<15} | {'Current Val':<15} | {'Ratio':<8}"
+            wf.write(header + "\n")
+            wf.write("-" * len(header) + "\n")
+            
+            # Table Rows (Sorted by Ratio descending)
+            WARNINGS_FOUND.sort(key=lambda x: x[4], reverse=True)
+            for row in WARNINGS_FOUND:
+                line = f"{row[0]:<30} | {row[1]:<25} | {row[2]:<15} | {row[3]:<15} | {row[4]:>6}%"
+                wf.write(line + "\n")
+        
+        print(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded the threshold. See '{WARNING_REPORT_FILE}' for the table report.")
+    else:
+        # Clear the warning file if no issues found
+        with open(WARNING_REPORT_FILE, "w") as wf:
+            wf.write("No columns exceeded the warning threshold.")
+
     connection.close()
