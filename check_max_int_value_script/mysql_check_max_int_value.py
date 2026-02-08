@@ -12,8 +12,8 @@
 # Description:
 # -------------------
 #- Connects to the MySQL database using a login path, scans all integer-based columns (tinyint, smallint, mediumint, int, bigint — both signed and unsigned) in a given schema, 
-#- calculates the current maximum value stored (WITH MULTITHREADING), and reports the fill ratio in 2 files: 
-#- (How close is the column to its maximum allowed value).
+#- Calculates the current maximum value stored (WITH MULTITHREADING), and reports the fill ratio in 2 files - One full log - and one report with only the warning columns in a table format. 
+#- Shows how close is the column to its maximum allowed value to avoid unexpected downtime due to column overflow.
 
 
 import sys
