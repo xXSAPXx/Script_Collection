@@ -61,7 +61,7 @@ def connect_and_fetch_columns():
         conf = myloginpath.parse((LOGIN_PATH))   # Login-path=local
 
     except Exception as e:
-        print(f"Error reading login path: {e}")
+        log_message(f"Error reading login path: {e}")
         sys.exit(1)
 
     # Connect to database:
@@ -178,15 +178,15 @@ finally:
             wf.write(f"CRITICAL COLUMN FILL RATIO REPORT - {DATABASE_TO_CHECK}\n")
             wf.write(f"Generated: {datetime.now()} | Threshold: > {WARNING_THRESHOLD}%\n\n")
             
-            header = f"{'Table':<30} | {'Column':<25} | {'Type':<15} | {'Current Val':<15} | {'Ratio':<8}"
+            header = f"{'Table':<50} | {'Column':<75} | {'Type':<25} | {'Current Val':<20} | {'Ratio':<8}"
             wf.write(header + "\n" + "-" * len(header) + "\n")
             
             # (Table Rows) Sort by ratio descending
             WARNINGS_FOUND.sort(key=lambda x: x[4], reverse=True)
             for row in WARNINGS_FOUND:
-                wf.write(f"{row[0]:<30} | {row[1]:<25} | {row[2]:<15} | {row[3]:<15} | {row[4]:>6}%\n")
+                wf.write(f"{row[0]:<50} | {row[1]:<75} | {row[2]:<25} | {row[3]:<20} | {row[4]:>6}%\n")
         
-        print(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded threshold. See '{WARNING_REPORT_FILE}'")
+        log_message(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded threshold. See '{WARNING_REPORT_FILE}'")
     
     else:
         # Clear the warning file if no issues found to avoid reading old data:
