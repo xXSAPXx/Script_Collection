@@ -187,11 +187,12 @@ finally:
                 wf.write(f"{row[0]:<30} | {row[1]:<25} | {row[2]:<15} | {row[3]:<15} | {row[4]:>6}%\n")
         
         print(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded threshold. See '{WARNING_REPORT_FILE}'")
+    
     else:
         # Clear the warning file if no issues found to avoid reading old data
         with open(WARNING_REPORT_FILE, "w") as wf:
             wf.write(f"Scan completed at {datetime.now()}\n")
             wf.write("No columns exceeded the warning threshold. All systems nominal.")
-            
+
     if connection:
         connection.close()
