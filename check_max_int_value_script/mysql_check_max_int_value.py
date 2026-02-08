@@ -178,13 +178,13 @@ finally:
             wf.write(f"CRITICAL COLUMN FILL RATIO REPORT - {DATABASE_TO_CHECK}\n")
             wf.write(f"Generated: {datetime.now()} | Threshold: > {WARNING_THRESHOLD}%\n\n")
             
-            header = f"{'Table':<50} | {'Column':<75} | {'Type':<25} | {'Current Val':<20} | {'Ratio':<8}"
+            header = f"{'Table':<40} | {'Column':<55} | {'Type':<25} | {'Current Val':<20} | {'Ratio':<10}"
             wf.write(header + "\n" + "-" * len(header) + "\n")
             
             # (Table Rows) Sort by ratio descending
             WARNINGS_FOUND.sort(key=lambda x: x[4], reverse=True)
             for row in WARNINGS_FOUND:
-                wf.write(f"{row[0]:<50} | {row[1]:<75} | {row[2]:<25} | {row[3]:<20} | {row[4]:>6}%\n")
+                wf.write(f"{row[0]:<40} | {row[1]:<55} | {row[2]:<25} | {row[3]:<20} | {row[4]:>8}%\n")
         
         log_message(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded threshold. See '{WARNING_REPORT_FILE}'")
     
