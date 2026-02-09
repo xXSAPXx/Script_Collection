@@ -8,8 +8,6 @@ set -euo pipefail
 
 
 # =================================================================================================================================
-# It needs check all MySQL logs active on the DB "SHOW BINARY LOGS"
-# It needs to FLUSH LOGS; to create a new log file and avoid coping the currently active DB binlog file, which can be written to during the backup process.
 # All binlog files checked by the SHOW BINARY LOGS commmand earlier need to be copied to GCS bucket.
 # They shound look like this in the bucket: gs://delasport-mysql-backup/binlogs_backup/2024-06-01/mysql-bin.000001, mysql-bin.000002, etc.
 # Then on the following day gs://delasport-mysql-backup/binlogs_backup/2024-06-02/mysql-bin.000003, mysql-bin.000004, etc.  
@@ -48,8 +46,16 @@ check_host(){
 
 mysql_binlog_backup(){
 
-BINLOG_LIST=$(cat /var/lib/mysql/mysql-bin.index | grep -E "mysql-bin.[0-9]+$" | awk -F "/" '{print $NF}')
+# Get the list of binary log files: 
 BINLOG_LIST=$(mysql --login-path=local -B -N -e "SHOW BINARY LOGS;" | awk '{print $1}')
+
+# Flush logs to create a new binary log file and avoid copying the currently active log file:
+mysql --login-path=local -e "FLUSH LOGS;"
+
+# Loop through the list of binary log files and copy them to GCS bucket:
+for BINLOG_FILE in $BINLOG_LIST; do
+    # Check if the binary log file has already been backed up by checking the local binlog tracking file:
+
 }
 
 
@@ -84,3 +90,31 @@ save_binlog_backup_metrics_failure() {
        "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom"
 }
 
+
+
+########################### Main script logic: ###########################
+main() {
+    if [ -z "$1" ]; then
+        echo
+        echo -e "${RED}Error: Exactly one argument is required.${RESET}"
+        show_help
+        exit 1
+    fi 
+
+    case "$1" in
+        --binlog_backup)
+            check_host
+            mysql_binlog_backup
+            ;;
+        
+        --help)
+            show_help
+            ;;
+        *)
+            echo 
+            echo -e "${RED}Error: Invalid argument '$1'.${RESET}"
+            show_help
+            exit 1
+            ;;
+    esac
+}
