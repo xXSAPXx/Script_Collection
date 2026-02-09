@@ -49,7 +49,7 @@ check_host(){
 mysql_binlog_backup(){
 
 BINLOG_LIST=$(cat /var/lib/mysql/mysql-bin.index | grep -E "mysql-bin.[0-9]+$" | awk -F "/" '{print $NF}')
-BINLOG_LIST=(mysql --login-path=local -e "SHOW BINARY LOGS;" | awk 'NR>1 {print $1}')
+BINLOG_LIST=$(mysql --login-path=local -B -N -e "SHOW BINARY LOGS;" | awk '{print $1}')
 }
 
 
