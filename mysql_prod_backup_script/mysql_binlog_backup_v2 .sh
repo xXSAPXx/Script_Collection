@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-set -euo pipefail
+set -uo pipefail
 
 # The script is used to backup MySQL binlog files to Google Cloud Storage: 
 # The script is intended to be run as a cron job every 15-30 minutes.
@@ -8,11 +8,7 @@ set -euo pipefail
 
 
 # =================================================================================================================================
-# All binlog files checked by the SHOW BINARY LOGS commmand earlier need to be copied to GCS bucket.
-# They shound look like this in the bucket: gs://delasport-mysql-backup/binlogs_backup/2024-06-01/mysql-bin.000001, mysql-bin.000002, etc.
-# Then on the following day gs://delasport-mysql-backup/binlogs_backup/2024-06-02/mysql-bin.000003, mysql-bin.000004, etc.  
-# I think the GCP bucket can handle duplicate names like a failsafe BUT ALSO: 
-# The script needs to track the last backup log file, to avoid backup the same log file twice.
+# ADD a way to dont overlap the backups with cron if the binlogs are taking a long time to copy.
 # =================================================================================================================================
 
 
@@ -25,26 +21,32 @@ YELLOW="\e[33m"
 RESET="\e[0m"
 
 DATA_DIR="/var/lib/mysql"
+LAST_BINLOG_BACKUP_FILE="$DATA_DIR/last_binlog_backup.txt"
 GCP_BINARY_PATH=$(which gcloud) || { echo -e "${RED}Error: gcloud CLI is not installed or not in PATH. Please install Google Cloud SDK.${RESET}"; }
 GCS_BUCKET="gs://delasport-mysql-backup/binlogs_backup"
+SERVER_NAME=$(hostname -s)
 TEXTFILE_COLLECTOR_DIR="/var/lib/node_exporter/textfile_collector/"
 BACKUP_TIMESTAMP=$(($(date +%s) * 1000))
 
-# Function to check if machine host is (src) or (rpl):
-check_host(){
 
-        rpl_env_type=`hostname -s | awk -F"-" '{print $(NF)}'`
-          case "$rpl_env_type" in
-                  rpl??|src)
-                          SERVER_NAME=$(hostname -s)
-                          ;;
-                  *)
-                          SERVER_NAME=$(hostname -s | cut -d"-" -f1-4)
-                          ;;              
-          esac
+# Function Help: 
+show_help(){
+    echo "================================================================================================================================="
+    echo
+    echo -e "${GREEN}Available Binlog Backup Options:${RESET} 🧊 🪧 🤌"
+    echo
+    echo -e "  ${CYAN}--binlog_backup${RESET}   | Backup MySQL inactive binlog files to GCP Bucket and save backup monitoring metrics."
+    echo -e "  ${CYAN}--help${RESET}            | Display this help message."
+    echo
+    echo "================================================================================================================================="
 }
 
+
+# Function to initiate MySQL binlog backup:
 mysql_binlog_backup(){
+
+# Start time of the binlog backup script:
+START_BINLOG_BACKUP="$(date +%s)"
 
 # Get the list of binary log files: 
 BINLOG_LIST=$(mysql --login-path=local -B -N -e "SHOW BINARY LOGS;" | awk '{print $1}')
@@ -52,17 +54,46 @@ BINLOG_LIST=$(mysql --login-path=local -B -N -e "SHOW BINARY LOGS;" | awk '{prin
 # Flush logs to create a new binary log file and avoid copying the currently active log file:
 mysql --login-path=local -e "FLUSH LOGS;"
 
+# Check if the last backup log file exists, if yes, read it: 
+if [ -f "$LAST_BINLOG_BACKUP_FILE" ]; then
+    LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE")
+else
+# If the file doesn't exist, create it and append mysql-bin.000000:
+    echo "mysql-bin.000000" > "$LAST_BINLOG_BACKUP_FILE"
+    LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE")
+fi
+
 # Loop through the list of binary log files and copy them to GCS bucket:
 for BINLOG_FILE in $BINLOG_LIST; do
     # Check if the binary log file has already been backed up by checking the local binlog tracking file:
+    if [[ "$BINLOG_FILE" > "$LAST_BACKED_UP_BINLOG" ]]; then
+        echo "Backing up binary log file: $BINLOG_FILE"
+        
+        # Copy the binary log file to GCS bucket:
+        $GCP_BINARY_PATH storage cp -n "$DATA_DIR/$BINLOG_FILE" "$GCS_BUCKET/$(date +%Y-%m-%d)/$BINLOG_FILE"
+        BINLOG_TRANSFER_STATUS=$?
 
+        # Update the last backed up binary log file tracking file:
+        echo "$BINLOG_FILE" > "$LAST_BINLOG_BACKUP_FILE"
+        BINLOG_FILE_UPDATE_STATUS=$?
+
+        # Check if any of the copy and the tracking file update were successful:
+        if [ $BINLOG_TRANSFER_STATUS -ne 0 ] || [ $BINLOG_FILE_UPDATE_STATUS -ne 0 ]; then
+            echo -e "${RED}Error backing up binary log file: $BINLOG_FILE${RESET}"
+            return 1 # Failure
+        fi
+    fi
+done
+
+# End time of the binlog backup script:
+END_BINLOG_BACKUP="$(date +%s)"
+
+# Calculate backup duration: 
+		DURATION_BINLOG_BACKUP="$(( ($END_BINLOG_BACKUP - $START_BINLOG_BACKUP) + 2 ))"
+        echo 
+		echo -e "${YELLOW}Duration in Seconds:${RESET} $(($END_BINLOG_BACKUP - $START_BINLOG_BACKUP))"
+        return 0  # Success
 }
-
-
-
-
-
-
 
 
 # Function to save BINLOG_BACKUP monitoring metrics in case of SUCCESS:
@@ -103,8 +134,15 @@ main() {
 
     case "$1" in
         --binlog_backup)
-            check_host
             mysql_binlog_backup
+            if [ $? -eq 0 ]; then
+                save_binlog_backup_metrics_success
+                echo -e "${GREEN}Saved Success Metrics for MySQL Binlog Backup.${RESET}"
+            else
+                save_binlog_backup_metrics_failure
+                echo -e "${RED}Saved Failure Metrics for MySQL Binlog Backup!${RESET}" 
+                exit 1
+            fi
             ;;
         
         --help)
