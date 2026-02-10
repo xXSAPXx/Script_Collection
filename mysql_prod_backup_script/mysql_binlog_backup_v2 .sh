@@ -9,6 +9,7 @@ set -uo pipefail
 
 # =================================================================================================================================
 # ADD a way to dont overlap the backups with cron if the binlogs are taking a long time to copy.
+# Maybe add a active binlog metric / last backed up binlog metric to the node exporter textfile_collector.
 # =================================================================================================================================
 
 
@@ -80,7 +81,7 @@ fi
 for BINLOG_FILE in $BINLOG_LIST; do
     # Check if the binary log file has already been backed up by checking the local binlog tracking file:
     if [[ "$BINLOG_FILE" > "$LAST_BACKED_UP_BINLOG" ]]; then
-        echo "Backing up binary log file: $BINLOG_FILE"
+        echo -e "${YELLOW}Backing up binary log file: $BINLOG_FILE${RESET}"
         
         # Copy the binary log file to GCS bucket:
         $GCP_BINARY_PATH storage cp -n "$DATA_DIR/$BINLOG_FILE" "$GCS_BUCKET/$(date +%Y-%m-%d)/$BINLOG_FILE"
