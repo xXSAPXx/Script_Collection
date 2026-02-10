@@ -24,7 +24,7 @@ RESET="\e[0m"
 DATA_DIR="/var/lib/mysql"
 LAST_BINLOG_BACKUP_FILE="$DATA_DIR/last_binlog_backup.txt"
 GCP_BINARY_PATH=$(which gcloud) || { echo -e "${RED}Error: gcloud CLI is not installed or not in PATH. Please install Google Cloud SDK.${RESET}"; }
-GCS_BUCKET="gs://delasport-mysql-backup/binlogs_backup"
+GCS_BUCKET="gs://db-dela-gamification-dev-src-backup/binlog_backups"
 SERVER_NAME=$(hostname -s)
 TEXTFILE_COLLECTOR_DIR="/var/lib/node_exporter/textfile_collector/"
 BACKUP_TIMESTAMP=$(($(date +%s) * 1000))
@@ -81,7 +81,7 @@ fi
 for BINLOG_FILE in $BINLOG_LIST; do
     # Check if the binary log file has already been backed up by checking the local binlog tracking file:
     if [[ "$BINLOG_FILE" > "$LAST_BACKED_UP_BINLOG" ]]; then
-        echo -e "${YELLOW}Backing up binary log file: $BINLOG_FILE${RESET}"
+        echo -e "${YELLOW}----Backing up binary log file: $BINLOG_FILE----${RESET}"
         
         # Copy the binary log file to GCS bucket:
         $GCP_BINARY_PATH storage cp -n "$DATA_DIR/$BINLOG_FILE" "$GCS_BUCKET/$(date +%Y-%m-%d)/$BINLOG_FILE"
