@@ -49,19 +49,32 @@ mysql_binlog_backup(){
 START_BINLOG_BACKUP="$(date +%s)"
 
 # Get the list of binary log files: 
-BINLOG_LIST=$(mysql --login-path=local -B -N -e "SHOW BINARY LOGS;" | awk '{print $1}')
+BINLOG_LIST=$(mysql --login-path=local -B -N -e "SHOW BINARY LOGS;" | awk '{print $1}') || {
+    echo -e "${RED}Error: Unable to retrieve the list of binary log files from MySQL.${RESET}"; 
+    return 1; }
 
 # Flush logs to create a new binary log file and avoid copying the currently active log file:
-mysql --login-path=local -e "FLUSH LOGS;"
+mysql --login-path=local -e "FLUSH LOGS;" || {
+    echo -e "${RED}Error: Unable to flush MySQL logs.${RESET}"; 
+    return 1; }
 
-# Check if the last backup log file exists, if yes, read it: 
-if [ -f "$LAST_BINLOG_BACKUP_FILE" ]; then
-    LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE")
+
+# Check tracking file (using -s to check if it exists AND has content) and read the last backed up binary log file:
+if [ -s "$LAST_BINLOG_BACKUP_FILE" ]; then
+    LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE") || {
+        echo -e "${RED}Error: Unable to read the last binlog backup tracking file.${RESET}"; 
+        return 1; }
+
 else
-# If the file doesn't exist, create it and append mysql-bin.000000:
-    echo "mysql-bin.000000" > "$LAST_BINLOG_BACKUP_FILE"
-    LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE")
+# File is missing or empty, initialize with the first binlog file:
+    echo "mysql-bin.000000" > "$LAST_BINLOG_BACKUP_FILE" || {
+        echo -e "${RED}Error: Unable to create binlog backup tracking file.${RESET}"; 
+        return 1; }
+    
+    LAST_BACKED_UP_BINLOG="mysql-bin.000000" 
+
 fi
+
 
 # Loop through the list of binary log files and copy them to GCS bucket:
 for BINLOG_FILE in $BINLOG_LIST; do
