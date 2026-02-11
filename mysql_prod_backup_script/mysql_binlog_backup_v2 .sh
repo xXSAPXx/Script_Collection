@@ -112,11 +112,18 @@ END_BINLOG_BACKUP="$(date +%s)"
 
 # Function to save BINLOG_BACKUP monitoring metrics in case of SUCCESS:
 save_binlog_backup_metrics_success() {
+
+    local ACTIVE_BINLOG=$(mysql --login-path=local -B -N -e "SHOW MASTER STATUS\G" | grep "File:" | awk '{print $2}')
+    local LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE")
+
     # Add Success Binlog_Backup Stats to Node_Exporter file: 
     printf "node_mysql_binlog_backup_status{instance=\"$SERVER_NAME\"} 0\n" > "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
     printf "node_mysql_binlog_backup_duration_seconds{instance=\"$SERVER_NAME\"} $DURATION_BINLOG_BACKUP\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
+    printf "node_mysql_current_active_binlog{instance=\"$SERVER_NAME\"} $ACTIVE_BINLOG\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
+    printf "node_mysql_last_backed_up_binlog{instance=\"$SERVER_NAME\"} $LAST_BACKED_UP_BINLOG\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
     printf "node_mysql_last_successful_binlog_backup_date{instance=\"$SERVER_NAME\"} $BACKUP_TIMESTAMP\n" > "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_age.prom"
     
+
     # Rename the temporary file atomically.
     # This avoids the node exporter seeing half a file.
     mv "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$" \
