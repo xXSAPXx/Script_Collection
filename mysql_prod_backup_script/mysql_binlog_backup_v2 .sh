@@ -113,8 +113,8 @@ END_BINLOG_BACKUP="$(date +%s)"
 # Function to save BINLOG_BACKUP monitoring metrics in case of SUCCESS:
 save_binlog_backup_metrics_success() {
 
-    local ACTIVE_BINLOG=$(mysql --login-path=local -B -N -e "SHOW MASTER STATUS\G" | grep "File:" | awk '{print $2}')
-    local LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE")
+    local ACTIVE_BINLOG=$(mysql --login-path=local -B -N -e "SHOW MASTER STATUS" | awk '{sub(/^mysql-bin\./,"",$1); print $1}')
+    local LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE" | awk '{sub(/^mysql-bin\./,"",$1); print $1}')
 
     # Add Success Binlog_Backup Stats to Node_Exporter file: 
     printf "node_mysql_binlog_backup_status{instance=\"$SERVER_NAME\"} 0\n" > "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
