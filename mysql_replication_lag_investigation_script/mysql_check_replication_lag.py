@@ -214,7 +214,7 @@ EVIDENCE_QUERIES = {
                LEFT(COALESCE(t.PROCESSLIST_INFO, (
                    SELECT SQL_TEXT FROM performance_schema.events_statements_history h
                    WHERE h.THREAD_ID = t.THREAD_ID ORDER BY h.EVENT_ID DESC LIMIT 1
-               )), 20) AS trx_query_preview
+               )), 50) AS trx_query_preview
         FROM information_schema.innodb_trx trx
         LEFT JOIN performance_schema.threads t ON t.PROCESSLIST_ID = trx.trx_mysql_thread_id
         ORDER BY trx_age_seconds DESC;
