@@ -44,7 +44,10 @@
 #- 8. Verify it's running:                      $ systemctl status mysql_replication_lag.service
 #-                                              $ journalctl -u mysql_replication_lag.service -f
 #-                                              $ tail -f /opt/mysql_replication_lag_investigation_script/mysql_replication_lag_investigation.log
-#- 9. Repeat on each replica.
+#- 9. Install log rotation (caps the log at ~50MB - 10MB x 5 files, compressed):
+#-                                              $ sudo cp mysql_replication_lag.logrotate.example /etc/logrotate.d/mysql_replication_lag
+#-    logrotate itself runs automatically on Rocky (daily cron/timer) - no extra scheduling needed.
+#- 10. Repeat on each replica.
 #- SELinux (enforcing by default on Rocky): generic systemd units usually run unconfined, but if the service fails
 #-    silently or hits unexplained permission errors, check before assuming it's a script bug: $ sudo ausearch -m avc -ts recent
 
@@ -195,9 +198,15 @@ EVIDENCE_QUERIES = {
         ORDER BY w.WORKER_ID;
     """,
     "INNODB_TRX": """
-        SELECT trx_id, trx_mysql_thread_id, trx_state, trx_started,
-               TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS trx_age_seconds
-        FROM information_schema.innodb_trx
+        SELECT trx.trx_id, trx.trx_mysql_thread_id, t.PROCESSLIST_USER, t.PROCESSLIST_HOST,
+               trx.trx_state, trx.trx_started,
+               TIMESTAMPDIFF(SECOND, trx.trx_started, NOW()) AS trx_age_seconds,
+               LEFT(COALESCE(t.PROCESSLIST_INFO, (
+                   SELECT SQL_TEXT FROM performance_schema.events_statements_history h
+                   WHERE h.THREAD_ID = t.THREAD_ID ORDER BY h.EVENT_ID DESC LIMIT 1
+               )), 20) AS trx_query_preview
+        FROM information_schema.innodb_trx trx
+        LEFT JOIN performance_schema.threads t ON t.PROCESSLIST_ID = trx.trx_mysql_thread_id
         ORDER BY trx_age_seconds DESC;
     """,
     "METADATA_LOCKS": """
