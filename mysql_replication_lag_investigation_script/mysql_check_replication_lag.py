@@ -66,6 +66,8 @@ LAG_THRESHOLD_SECONDS = 15                  # Lag at/above this triggers LAGGING
 HEAVY_EVIDENCE_INTERVAL_SECONDS = 10        # While LAGGING, re-capture full evidence this often
 RECONNECT_DELAY_SECONDS = 10                # Wait time between reconnect attempts after a connection error
 
+OK_LOG_INTERVAL_SECONDS = 60                # Only write an OK heartbeat line this often (polling stays at POLL_INTERVAL_SECONDS)
+
 MYSQL_CLI_TIMEOUT_SECONDS = 5               # Kill a hung 'mysql' CLI evidence query after this long
 MYSQL_CLI_RETRIES = 1                       # Retries on top of the first attempt before giving up on that query
 MYSQL_CLI_RETRY_DELAY_SECONDS = 2           # Wait between 'mysql' CLI retries
@@ -220,7 +222,14 @@ EVIDENCE_QUERIES = {
                b.PROCESSLIST_USER AS BLOCKING_USER, b.PROCESSLIST_HOST AS BLOCKING_HOST,
                dlr.OBJECT_SCHEMA, dlr.OBJECT_NAME, dlr.INDEX_NAME, dlr.LOCK_TYPE, dlr.LOCK_MODE,
                r.PROCESSLIST_TIME AS WAITING_TIME, b.PROCESSLIST_TIME AS BLOCKING_TIME,
-               r.PROCESSLIST_INFO AS WAITING_SQL, b.PROCESSLIST_INFO AS BLOCKING_SQL
+               COALESCE(r.PROCESSLIST_INFO, (
+                   SELECT SQL_TEXT FROM performance_schema.events_statements_history h
+                   WHERE h.THREAD_ID = dlr.THREAD_ID ORDER BY h.EVENT_ID DESC LIMIT 1
+               )) AS WAITING_SQL,
+               COALESCE(b.PROCESSLIST_INFO, (
+                   SELECT SQL_TEXT FROM performance_schema.events_statements_history h
+                   WHERE h.THREAD_ID = dlb.THREAD_ID ORDER BY h.EVENT_ID DESC LIMIT 1
+               )) AS BLOCKING_SQL
         FROM performance_schema.data_lock_waits lw
         JOIN performance_schema.data_locks dlr ON dlr.ENGINE_LOCK_ID = lw.REQUESTING_ENGINE_LOCK_ID
         JOIN performance_schema.data_locks dlb ON dlb.ENGINE_LOCK_ID = lw.BLOCKING_ENGINE_LOCK_ID
@@ -271,6 +280,7 @@ def main():
     entering_time = None
     peak_lag = 0
     last_heavy_capture_time = 0
+    last_ok_log_time = 0
 
     log(f"\n--- Starting replication lag monitor: {timestamp()} ---")
 
@@ -326,8 +336,10 @@ def main():
                         f"{evidence_text}"
                     )
                     state = "OK"
-                else:
+                    last_ok_log_time = now
+                elif now - last_ok_log_time >= OK_LOG_INTERVAL_SECONDS:
                     log(f"{timestamp()} | OK | lag={lag}s")
+                    last_ok_log_time = now
 
         except pymysql.err.Error as e:
             log(f"{timestamp()} | ERROR | MySQL error during poll: {e}")
