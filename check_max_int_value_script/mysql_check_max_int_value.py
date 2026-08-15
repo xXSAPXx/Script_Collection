@@ -3,10 +3,9 @@
 
 # Requirements:
 # -------------------
-#- $ python3 --version                                        /// Check Python Version 
+#- $ python3 --version                                        /// Check Python Version
 #- $ pip3 install myloginpath                                 /// myloginpath (for reading MySQL login-path credentials)
-#- $ dnf install python3-devel mariadb-connector-c-devel gcc  /// mysqlclient (MySQLdb) library and 'C' compiler    
-#- $ pip3 install mysqlclient                                 /// mysqlclient (MySQLdb)                                       
+#- $ pip3 install PyMySQL                                     /// PyMySQL - pure Python MySQL driver, no gcc / C headers required
 
 
 # Description:
@@ -18,7 +17,7 @@
 
 import sys
 import myloginpath
-import MySQLdb
+import pymysql
 import time
 import concurrent.futures
 import threading
@@ -66,7 +65,7 @@ def connect_and_fetch_columns():
 
     # Connect to database:
     try:
-        connection = MySQLdb.connect(**conf, database=(DATABASE_TO_CHECK))
+        connection = pymysql.connect(**conf, database=(DATABASE_TO_CHECK))
         log_message("Connected successfully to MySQL")
     except Exception as e:
         log_message(f"Error connecting to MySQL: {e}")
@@ -112,8 +111,8 @@ def check_column_max(args_conf):
     table_name, column_name, column_type, max_value = args
 
     try:
-        # Connect to the DB with a new thread (conn.cursor): 
-        conn = MySQLdb.connect(**conf, database=DATABASE_TO_CHECK)
+        # Connect to the DB with a new thread (conn.cursor):
+        conn = pymysql.connect(**conf, database=DATABASE_TO_CHECK)
         cursor = conn.cursor()
 
         # Using backticks for all identifiers to prevent SQL errors on reserved words:
