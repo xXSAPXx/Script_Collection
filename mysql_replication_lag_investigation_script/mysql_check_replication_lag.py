@@ -151,7 +151,6 @@ def get_worker_rows(cursor):
             t.PROCESSLIST_COMMAND,
             t.PROCESSLIST_TIME,
             t.PROCESSLIST_STATE,
-            LEFT(t.PROCESSLIST_INFO, 200) AS PROCESSLIST_INFO,
             w.APPLYING_TRANSACTION
         FROM performance_schema.replication_applier_status_by_worker w
         LEFT JOIN performance_schema.threads t ON t.THREAD_ID = w.THREAD_ID
@@ -187,8 +186,7 @@ EVIDENCE_QUERIES = {
     "APPLIER WORKERS": """
         SELECT w.WORKER_ID, w.THREAD_ID, w.SERVICE_STATE, t.PROCESSLIST_ID, t.PROCESSLIST_USER,
                t.PROCESSLIST_HOST, t.PROCESSLIST_DB, t.PROCESSLIST_COMMAND, t.PROCESSLIST_TIME,
-               t.PROCESSLIST_STATE, LEFT(t.PROCESSLIST_INFO, 200) AS PROCESSLIST_INFO,
-               w.APPLYING_TRANSACTION
+               t.PROCESSLIST_STATE, w.APPLYING_TRANSACTION
         FROM performance_schema.replication_applier_status_by_worker w
         LEFT JOIN performance_schema.threads t ON t.THREAD_ID = w.THREAD_ID
         WHERE w.CHANNEL_NAME = '{channel}'
@@ -196,21 +194,25 @@ EVIDENCE_QUERIES = {
     """,
     "INNODB_TRX": """
         SELECT trx_id, trx_mysql_thread_id, trx_state, trx_started,
-               TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS trx_age_seconds,
-               LEFT(trx_query, 200) AS trx_query
+               TIMESTAMPDIFF(SECOND, trx_started, NOW()) AS trx_age_seconds
         FROM information_schema.innodb_trx
         ORDER BY trx_age_seconds DESC;
     """,
     "METADATA_LOCKS": """
         SELECT ml.OWNER_THREAD_ID, ml.OBJECT_TYPE, ml.OBJECT_SCHEMA, ml.OBJECT_NAME, ml.LOCK_TYPE,
                ml.LOCK_DURATION, ml.LOCK_STATUS, t.PROCESSLIST_ID, t.PROCESSLIST_USER,
-               t.PROCESSLIST_HOST, t.PROCESSLIST_DB, t.PROCESSLIST_TIME, t.PROCESSLIST_STATE,
-               LEFT(t.PROCESSLIST_INFO, 200) AS PROCESSLIST_INFO
+               t.PROCESSLIST_HOST, t.PROCESSLIST_DB, t.PROCESSLIST_TIME, t.PROCESSLIST_STATE
         FROM performance_schema.metadata_locks ml
         LEFT JOIN performance_schema.threads t ON t.THREAD_ID = ml.OWNER_THREAD_ID
         WHERE ml.OBJECT_SCHEMA NOT IN ('performance_schema', 'mysql')
           AND ml.LOCK_STATUS IN ('PENDING', 'GRANTED')
         ORDER BY ml.OBJECT_SCHEMA, ml.OBJECT_NAME, ml.LOCK_STATUS;
+    """,
+    "PROCESSLIST": """
+        SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE
+        FROM information_schema.processlist
+        WHERE COMMAND != 'Sleep'
+        ORDER BY TIME DESC;
     """,
     "DATA_LOCK_WAITS": """
         SELECT dlr.THREAD_ID AS WAITING_THREAD_ID, dlb.THREAD_ID AS BLOCKING_THREAD_ID,
@@ -218,18 +220,12 @@ EVIDENCE_QUERIES = {
                b.PROCESSLIST_USER AS BLOCKING_USER, b.PROCESSLIST_HOST AS BLOCKING_HOST,
                dlr.OBJECT_SCHEMA, dlr.OBJECT_NAME, dlr.INDEX_NAME, dlr.LOCK_TYPE, dlr.LOCK_MODE,
                r.PROCESSLIST_TIME AS WAITING_TIME, b.PROCESSLIST_TIME AS BLOCKING_TIME,
-               LEFT(r.PROCESSLIST_INFO, 200) AS WAITING_SQL, LEFT(b.PROCESSLIST_INFO, 200) AS BLOCKING_SQL
+               r.PROCESSLIST_INFO AS WAITING_SQL, b.PROCESSLIST_INFO AS BLOCKING_SQL
         FROM performance_schema.data_lock_waits lw
         JOIN performance_schema.data_locks dlr ON dlr.ENGINE_LOCK_ID = lw.REQUESTING_ENGINE_LOCK_ID
         JOIN performance_schema.data_locks dlb ON dlb.ENGINE_LOCK_ID = lw.BLOCKING_ENGINE_LOCK_ID
         LEFT JOIN performance_schema.threads r ON r.THREAD_ID = dlr.THREAD_ID
         LEFT JOIN performance_schema.threads b ON b.THREAD_ID = dlb.THREAD_ID;
-    """,
-    "PROCESSLIST": """
-        SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, LEFT(INFO, 200) AS INFO
-        FROM information_schema.processlist
-        WHERE COMMAND != 'Sleep'
-        ORDER BY TIME DESC;
     """,
 }
 
