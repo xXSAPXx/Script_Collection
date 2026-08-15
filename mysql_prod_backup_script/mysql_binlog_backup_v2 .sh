@@ -87,13 +87,19 @@ for BINLOG_FILE in $BINLOG_LIST; do
         $GCP_BINARY_PATH storage cp -n "$DATA_DIR/$BINLOG_FILE" "$GCS_BUCKET/$(date +%Y-%m-%d)/$BINLOG_FILE"
         BINLOG_TRANSFER_STATUS=$?
 
+        # Check if the binary log file was copied successfully:
+        if [ $BINLOG_TRANSFER_STATUS -ne 0 ]; then
+            echo -e "${RED}Error backing up binary log file: $BINLOG_FILE${RESET}"
+            return 1 # Failure
+        fi
+
         # Update the last backed up binary log file tracking file:
         echo "$BINLOG_FILE" > "$LAST_BINLOG_BACKUP_FILE"
         BINLOG_FILE_UPDATE_STATUS=$?
 
-        # Check if any of the copy and the tracking file update were successful:
-        if [ $BINLOG_TRANSFER_STATUS -ne 0 ] || [ $BINLOG_FILE_UPDATE_STATUS -ne 0 ]; then
-            echo -e "${RED}Error backing up binary log file: $BINLOG_FILE${RESET}"
+        # Check if the tracking file was updated successfully:
+        if [ $BINLOG_FILE_UPDATE_STATUS -ne 0 ]; then
+            echo -e "${RED}Error updating the last binlog backup tracking file after backing up: $BINLOG_FILE${RESET}"
             return 1 # Failure
         fi
     fi
@@ -123,7 +129,6 @@ save_binlog_backup_metrics_success() {
     printf "node_mysql_last_backed_up_binlog{instance=\"$SERVER_NAME\"} $LAST_BACKED_UP_BINLOG\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
     printf "node_mysql_last_successful_binlog_backup_date{instance=\"$SERVER_NAME\"} $BACKUP_TIMESTAMP\n" > "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_age.prom"
     
-
     # Rename the temporary file atomically.
     # This avoids the node exporter seeing half a file.
     mv "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$" \
@@ -133,8 +138,14 @@ save_binlog_backup_metrics_success() {
 
 # Function to save BINLOG_BACKUP monitoring metrics in case of FAILURE:
 save_binlog_backup_metrics_failure() {
+
+    local ACTIVE_BINLOG=$(mysql --login-path=local -B -N -e "SHOW MASTER STATUS" | awk '{sub(/^mysql-bin\./,"",$1); print $1}')
+    local LAST_BACKED_UP_BINLOG=$(cat "$LAST_BINLOG_BACKUP_FILE" | awk '{sub(/^mysql-bin\./,"",$1); print $1}')
+
     printf "node_mysql_binlog_backup_status{instance=\"$SERVER_NAME\"} 1\n" > "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
     printf "node_mysql_binlog_backup_duration_seconds{instance=\"$SERVER_NAME\"} 1\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
+    printf "node_mysql_current_active_binlog{instance=\"$SERVER_NAME\"} $ACTIVE_BINLOG\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
+    printf "node_mysql_last_backed_up_binlog{instance=\"$SERVER_NAME\"} $LAST_BACKED_UP_BINLOG\n" >> "$TEXTFILE_COLLECTOR_DIR/mysql_binlog_backup_status.prom.$$"
 
     # Rename the temporary file atomically.
     # This avoids the node exporter seeing half a file.
