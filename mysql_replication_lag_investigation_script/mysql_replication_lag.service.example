@@ -1,0 +1,14 @@
+[Unit]
+Description=MySQL Replication Lag Investigation Monitor
+After=network.target mysqld.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mysql_replication_lag_investigation_script
+ExecStart=/usr/bin/python3 /opt/mysql_replication_lag_investigation_script/mysql_check_replication_lag.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
