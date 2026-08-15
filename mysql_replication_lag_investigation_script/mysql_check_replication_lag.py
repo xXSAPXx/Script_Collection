@@ -101,6 +101,16 @@ def timestamp():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def state_banner(label):
+    """Big boxed banner marking a major state transition (LAGGING / RECOVERED), for easy visual scanning."""
+    width = 60
+    border = "=" * width
+    return f"{border}\n|{label.center(width - 2)}|\n{border}"
+
+
+SECTION_SEPARATOR = "\n".join(["#"] * 5)  # Divider between a LAGGING episode's content and the RECOVERED banner
+
+
 # ==================== Connection Handling ==================== #
 def connect():
     conf = myloginpath.parse(LOGIN_PATH)
@@ -231,14 +241,15 @@ EVIDENCE_QUERIES = {
                b.PROCESSLIST_USER AS BLOCKING_USER, b.PROCESSLIST_HOST AS BLOCKING_HOST,
                dlr.OBJECT_SCHEMA, dlr.OBJECT_NAME, dlr.INDEX_NAME, dlr.LOCK_TYPE, dlr.LOCK_MODE,
                r.PROCESSLIST_TIME AS WAITING_TIME, b.PROCESSLIST_TIME AS BLOCKING_TIME,
-               COALESCE(r.PROCESSLIST_INFO, (
-                   SELECT SQL_TEXT FROM performance_schema.events_statements_history h
-                   WHERE h.THREAD_ID = dlr.THREAD_ID ORDER BY h.EVENT_ID DESC LIMIT 1
-               )) AS WAITING_SQL,
-               COALESCE(b.PROCESSLIST_INFO, (
-                   SELECT SQL_TEXT FROM performance_schema.events_statements_history h
-                   WHERE h.THREAD_ID = dlb.THREAD_ID ORDER BY h.EVENT_ID DESC LIMIT 1
-               )) AS BLOCKING_SQL
+               COALESCE(
+                   r.PROCESSLIST_INFO,
+                   (SELECT SQL_TEXT FROM performance_schema.events_statements_current c
+                    WHERE c.THREAD_ID = dlr.THREAD_ID LIMIT 1)
+               ) AS WAITING_SQL,
+               b.PROCESSLIST_COMMAND AS BLOCKING_COMMAND,
+               b.PROCESSLIST_INFO AS BLOCKING_CURRENT_SQL,
+               (SELECT SQL_TEXT FROM performance_schema.events_statements_history h
+                WHERE h.THREAD_ID = dlb.THREAD_ID ORDER BY h.EVENT_ID DESC LIMIT 1) AS BLOCKING_LAST_SQL
         FROM performance_schema.data_lock_waits lw
         JOIN performance_schema.data_locks dlr ON dlr.ENGINE_LOCK_ID = lw.REQUESTING_ENGINE_LOCK_ID
         JOIN performance_schema.data_locks dlb ON dlb.ENGINE_LOCK_ID = lw.BLOCKING_ENGINE_LOCK_ID
@@ -319,7 +330,11 @@ def main():
                     entering_time = now
                     peak_lag = lag
                     evidence_text = capture_evidence()
-                    log(f"{timestamp()} | LAGGING (entering) | lag={lag}s\n    --- evidence snapshot ---\n{evidence_text}")
+                    log(
+                        f"\n\n{state_banner('LAGGING')}\n"
+                        f"{timestamp()} | LAGGING (entering) | lag={lag}s\n"
+                        f"    --- evidence snapshot ---\n{evidence_text}\n"
+                    )
                     last_heavy_capture_time = now
                 else:
                     peak_lag = max(peak_lag, lag)
@@ -340,9 +355,10 @@ def main():
                     duration = int(now - entering_time)
                     evidence_text = capture_evidence()
                     log(
+                        f"\n\n{SECTION_SEPARATOR}\n\n{state_banner('RECOVERED')}\n"
                         f"{timestamp()} | RECOVERED | lag={lag}s | duration={duration}s | peak_lag={peak_lag}s\n"
                         f"    --- recovered snapshot ---\n"
-                        f"{evidence_text}"
+                        f"{evidence_text}\n"
                     )
                     state = "OK"
                     last_ok_log_time = now
