@@ -137,7 +137,7 @@ def check_column_max(args_conf):
                        f"    Type: {column_type} | Max: {max_value} | Current: {current_value} | Time: {elapsed:.2f}s")
                 
                 # Store data for the table report:
-                WARNINGS_FOUND.append([table_name, column_name, column_type, current_value, ratio])
+                WARNINGS_FOUND.append([table_name, column_name, column_type, max_value, current_value, ratio])
             else:
                 msg = f"{progress} Checked '{table_name}'.'{column_name}'... OK ({elapsed:.2f}s)"
             
@@ -173,25 +173,34 @@ finally:
     
     # --- GENERATE THE WARNING TABLE REPORT ---
     if WARNINGS_FOUND:
+        header = f"{'Table':<40} | {'Column':<55} | {'Type':<25} | {'Max Value':<25} | {'Current Val':<20} | {'Ratio':<10}"
+        separator = "-" * len(header)
+
+        # (Table Rows) Sort by ratio descending
+        WARNINGS_FOUND.sort(key=lambda x: x[5], reverse=True)
+        rows = [f"{row[0]:<40} | {row[1]:<55} | {row[2]:<25} | {row[3]:<25} | {row[4]:<20} | {row[5]:>8}%" for row in WARNINGS_FOUND]
+        warning_table = "\n".join([header, separator] + rows)
+
         with open(WARNING_REPORT_FILE, "w") as wf:
             wf.write(f"CRITICAL COLUMN FILL RATIO REPORT - {DATABASE_TO_CHECK}\n")
             wf.write(f"Generated: {datetime.now()} | Threshold: > {WARNING_THRESHOLD}%\n\n")
-            
-            header = f"{'Table':<40} | {'Column':<55} | {'Type':<25} | {'Current Val':<20} | {'Ratio':<10}"
-            wf.write(header + "\n" + "-" * len(header) + "\n")
-            
-            # (Table Rows) Sort by ratio descending
-            WARNINGS_FOUND.sort(key=lambda x: x[4], reverse=True)
-            for row in WARNINGS_FOUND:
-                wf.write(f"{row[0]:<40} | {row[1]:<55} | {row[2]:<25} | {row[3]:<20} | {row[4]:>8}%\n")
-        
+            wf.write(warning_table + "\n")
+
         log_message(f"\n[!] ALERT: {len(WARNINGS_FOUND)} columns exceeded threshold. See '{WARNING_REPORT_FILE}'")
-    
+
+        # Also append the same table to the end of the full log, so it's visible without opening a second file:
+        with open(FULL_LOG_FILE, "a") as f:
+            f.write(f"\n=== COLUMNS THAT FAILED THE CHECK (> {WARNING_THRESHOLD}% full) ===\n")
+            f.write(warning_table + "\n")
+
     else:
         # Clear the warning file if no issues found to avoid reading old data:
         with open(WARNING_REPORT_FILE, "w") as wf:
             wf.write(f"Scan completed at {datetime.now()}\n")
             wf.write("No columns exceeded the warning threshold. All systems nominal.")
+
+        with open(FULL_LOG_FILE, "a") as f:
+            f.write(f"\n=== No columns exceeded the warning threshold ({WARNING_THRESHOLD}%). All systems nominal. ===\n")
 
     if connection:
         connection.close()
